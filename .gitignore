@@ -1,7 +1,13 @@
 *
 !.gitignore
+!.flake8
+!.pre-commit-config.yaml
 !hacs.json
 !LICENSE
+!pyproject.toml
 !README.md
 !custom_components/
+!custom_components/cryptoinfo/*
 !custom_components/*
+.DS_Store
+__pycache__

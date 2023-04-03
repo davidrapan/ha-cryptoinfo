@@ -6,7 +6,7 @@ Author: Johnny Visser
 
 import requests
 import voluptuous as vol
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 import urllib.error
 
 from .const.const import (
@@ -34,9 +34,14 @@ from .const.const import (
     ATTR_24H_LOW,
     ATTR_24H_HIGH,
     ATTR_IMAGE_URL,
-    API_ENDPOINT,
+    API_BASE_URL,
+    API_ENDPOINT_MAIN,
+    API_ENDPOINT_ALT,
+    API_ENDPOINT_DOM,
     CONF_ID,
 )
+
+from .manager import CryptoInfoEntityManager, CryptoInfoDataFetchType
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorDeviceClass
 import homeassistant.helpers.config_validation as cv
@@ -89,6 +94,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         return False
 
     add_entities(entities)
+    CryptoInfoEntityManager.instance().add_entities(entities)
 
 
 class CryptoinfoSensor(Entity):
@@ -104,6 +110,8 @@ class CryptoinfoSensor(Entity):
         is_dominance_sensor,
     ):
         self._is_dominance_sensor = is_dominance_sensor
+        self._fetch_type = CryptoInfoDataFetchType.PRICE_MAIN
+        self._update_frequency = update_frequency
         self.data = None
         self.cryptocurrency_name = cryptocurrency_name
         self.currency_name = currency_name
@@ -127,7 +135,10 @@ class CryptoinfoSensor(Entity):
                     + " Dominance"
                 )
             )
+            self._fetch_type = CryptoInfoDataFetchType.DOMINANCE
         self._use_simple_price = use_simple_price
+        if self._use_simple_price:
+            self._fetch_type = CryptoInfoDataFetchType.PRICE_SIMPLE
         self._icon = "mdi:bitcoin"
         self._state = None
         self._last_update = None
@@ -160,6 +171,14 @@ class CryptoinfoSensor(Entity):
                 + str(update_frequency)
                 + "_dom"
             )
+
+    @property
+    def update_frequency(self):
+        return self._update_frequency
+
+    @property
+    def fetch_type(self):
+        return self._fetch_type
 
     @property
     def name(self):
@@ -215,183 +234,161 @@ class CryptoinfoSensor(Entity):
             ATTR_IMAGE_URL: self._image_url,
         }
 
-    def _fetch_price_data_main(self):
+    def _log_api_error(self, error, r):
+        _LOGGER.error(
+            "Error fetching update from coingecko: "
+            + str(error)
+            + " - response status: "
+            + str(r.status_code if r is not None else None)
+            + " - "
+            + str(r.reason if r is not None else None)
+        )
+
+    def _api_fetch(self, api_data, url, extract_data, extract_primary):
+        r = None
+        try:
+            if api_data is None:
+                r = requests.get(url=url)
+                api_data = extract_data(r.json())
+            primary_data = extract_primary(api_data)
+            self.data = api_data
+        except Exception as error:
+            self._log_api_error(error, r)
+            primary_data, api_data = None, None
+        return primary_data, api_data
+
+    def _extract_data_price_main_primary(self, api_data):
+        return api_data["current_price"] * float(self.multiplier)
+
+    def _extract_data_price_main_full(self, json_data):
+        return json_data[0]
+
+    def _extract_data_price_simple_primary(self, api_data):
+        return api_data[self.currency_name] * float(self.multiplier)
+
+    def _extract_data_price_simple_full(self, json_data):
+        return json_data[self.cryptocurrency_name]
+
+    def _extract_data_dominance_primary(self, api_data):
+        return api_data["market_cap_percentage"][self.cryptocurrency_name]
+
+    def _extract_data_dominance_full(self, json_data):
+        return json_data["data"]
+
+    def _fetch_price_data_main(self, api_data=None):
         if self._use_simple_price or self._is_dominance_sensor:
             raise ValueError()
-        url = (
-            API_ENDPOINT
-            + "coins/markets?ids="
-            + self.cryptocurrency_name
-            + "&vs_currency="
-            + self.currency_name
-            + "&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d%2C30d"
+        price_data, api_data = self._api_fetch(
+            api_data,
+            API_ENDPOINT_MAIN.format(API_BASE_URL, self.cryptocurrency_name, self.currency_name),
+            self._extract_data_price_main_full, self._extract_data_price_main_primary
         )
-        r = None
-        try:
-            # sending get request
-            r = requests.get(url=url)
-            # extracting response json
-            self.data = r.json()[0]
-            # multiply the price
-            price_data = self.data["current_price"] * float(self.multiplier)
-        except Exception as error:
-            _LOGGER.error(
-                "Error fetching update from coingecko: "
-                + str(error)
-                + " - response status: "
-                + str(r.status_code if r is not None else None)
-                + " - "
-                + str(r.reason if r is not None else None)
-            )
-            price_data = None
-
         if price_data:
-            # Set the values of the sensor
-            self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
-            self._state = float(price_data)
-            # set the attributes of the sensor
-            self._base_price = r.json()[0]["current_price"]
-            self._24h_volume = r.json()[0]["total_volume"]
-            self._1h_change = r.json()[0]["price_change_percentage_1h_in_currency"]
-            self._24h_change = r.json()[0][
-                "price_change_percentage_24h_in_currency"
-            ]
-            self._7d_change = r.json()[0]["price_change_percentage_7d_in_currency"]
-            self._30d_change = r.json()[0][
-                "price_change_percentage_30d_in_currency"
-            ]
-            self._market_cap = r.json()[0]["market_cap"]
-            self._circulating_supply = r.json()[0]["circulating_supply"]
-            self._total_supply = r.json()[0]["total_supply"]
-            self._all_time_high = r.json()[0]["ath"]
-            self._all_time_low = r.json()[0]["atl"]
-            self._24h_low = r.json()[0]["low_24h"]
-            self._24h_high = r.json()[0]["high_24h"]
-            self._image_url = r.json()[0]["image"]
+            self._update_all_properties(
+                state=float(price_data),
+                base_price=api_data["current_price"],
+                volume_24h=api_data["total_volume"],
+                change_1h=api_data["price_change_percentage_1h_in_currency"],
+                change_24h=api_data["price_change_percentage_24h_in_currency"],
+                change_7d=api_data["price_change_percentage_7d_in_currency"],
+                change_30d=api_data["price_change_percentage_30d_in_currency"],
+                market_cap=api_data["market_cap"],
+                circulating_supply=api_data["circulating_supply"],
+                total_supply=api_data["total_supply"],
+                all_time_high=api_data["ath"],
+                all_time_low=api_data["atl"],
+                low_24h=api_data["low_24h"],
+                high_24h=api_data["high_24h"],
+                image_url=api_data["image"],
+            )
         else:
             raise ValueError()
+        return self.data
 
-    def _fetch_price_data_alternate(self):
+    def _fetch_price_data_alternate(self, api_data=None):
         if self._is_dominance_sensor:
             raise ValueError()
-        url = (
-            API_ENDPOINT
-            + "simple/price?ids="
-            + self.cryptocurrency_name
-            + "&vs_currencies="
-            + self.currency_name
-            + "&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true"
+        price_data, api_data = self._api_fetch(
+            api_data,
+            API_ENDPOINT_ALT.format(API_BASE_URL, self.cryptocurrency_name, self.currency_name),
+            self._extract_data_price_simple_full, self._extract_data_price_simple_primary
         )
-        r = None
-        try:
-            # sending get request
-            r = requests.get(url=url)
-            # extracting response json
-            self.data = r.json()[self.cryptocurrency_name]
-            # multiply the price
-            price_data = self.data[self.currency_name] * float(self.multiplier)
-        except Exception as error:
-            _LOGGER.error(
-                "Error fetching update from coingecko: "
-                + str(error)
-                + " - response status: "
-                + str(r.status_code if r is not None else None)
-                + " - "
-                + str(r.reason if r is not None else None)
-            )
-            price_data = None
-
         if price_data:
-            # Set the values of the sensor
-            self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
-            self._state = float(price_data)
-            # set the attributes of the sensor
-            self._base_price = r.json()[self.cryptocurrency_name][self.currency_name]
-            self._24h_volume = r.json()[self.cryptocurrency_name][self.currency_name+ "_24h_vol"]
-            self._1h_change = None
-            self._24h_change = r.json()[self.cryptocurrency_name][self.currency_name+ "_24h_change"]
-            self._7d_change = None
-            self._30d_change = None
-            self._market_cap = r.json()[self.cryptocurrency_name][self.currency_name+ "_market_cap"]
-            self._circulating_supply = None
-            self._total_supply = None
-            self._all_time_high = None
-            self._all_time_low = None
-            self._24h_low = None
-            self._24h_high = None
-            self._image_url = None
-        else:
-            raise ValueError()
-
-    def _fetch_dominance(self):
-        url = (
-            API_ENDPOINT
-            + "global"
-        )
-        r = None
-        try:
-            # sending get request
-            r = requests.get(url=url)
-            # extracting response json
-            self.data = r.json()["data"]
-            # multiply the price
-            dominance_data = self.data["market_cap_percentage"][self.cryptocurrency_name]
-        except Exception as error:
-            _LOGGER.error(
-                "Error fetching update from coingecko: "
-                + str(error)
-                + " - response status: "
-                + str(r.status_code if r is not None else None)
-                + " - "
-                + str(r.reason if r is not None else None)
+            self._update_all_properties(
+                state=float(price_data),
+                base_price=api_data[self.currency_name],
+                volume_24h=api_data[self.currency_name + "_24h_vol"],
+                change_24h=api_data[self.currency_name + "_24h_change"],
+                market_cap=api_data[self.currency_name + "_market_cap"]
             )
-            dominance_data = None
-
-        if dominance_data:
-            # Set the values of the sensor
-            self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
-            self._state = float(dominance_data)
-            # set the attributes of the sensor
-            self._base_price = None
-            self._24h_volume = None
-            self._1h_change = None
-            self._24h_change = None
-            self._7d_change = None
-            self._30d_change = None
-            self._market_cap = self.data["total_market_cap"][self.cryptocurrency_name]
-            self._circulating_supply = None
-            self._total_supply = None
-            self._all_time_high = None
-            self._all_time_low = None
-            self._24h_low = None
-            self._24h_high = None
-            self._image_url = None
         else:
             raise ValueError()
+        return self.data
+
+    def _fetch_dominance(self, api_data=None):
+        dominance_data, api_data = self._api_fetch(
+            api_data,
+            API_ENDPOINT_DOM.format(API_BASE_URL),
+            self._extract_data_dominance_full,
+            self._extract_data_dominance_primary
+        )
+        if dominance_data:
+            self._update_all_properties(
+                state=float(dominance_data),
+                market_cap=api_data["total_market_cap"][self.cryptocurrency_name]
+            )
+        else:
+            raise ValueError()
+        return self.data
+
+    def _update_all_properties(
+        self,
+        state=None,
+        base_price=None,
+        volume_24h=None,
+        change_1h=None,
+        change_24h=None,
+        change_7d=None,
+        change_30d=None,
+        market_cap=None,
+        circulating_supply=None,
+        total_supply=None,
+        all_time_high=None,
+        all_time_low=None,
+        low_24h=None,
+        high_24h=None,
+        image_url=None,
+    ):
+        self._state = state
+        self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
+        self._base_price = base_price
+        self._24h_volume = volume_24h
+        self._1h_change = change_1h
+        self._24h_change = change_24h
+        self._7d_change = change_7d
+        self._30d_change = change_30d
+        self._market_cap = market_cap
+        self._circulating_supply = circulating_supply
+        self._total_supply = total_supply
+        self._all_time_high = all_time_high
+        self._all_time_low = all_time_low
+        self._24h_low = low_24h
+        self._24h_high = high_24h
+        self._image_url = image_url
 
     def _update(self):
+        api_data = None
+        if not CryptoInfoEntityManager.instance().should_fetch_entity(self):
+            api_data = CryptoInfoEntityManager.instance().fetch_cached_entity_data(self)
         try:
             if self._is_dominance_sensor:
-                self._fetch_dominance()
+                api_data = self._fetch_dominance(api_data)
             else:
-                self._fetch_price_data_main()
+                api_data = self._fetch_price_data_main(api_data)
         except ValueError:
             try:
-                self._fetch_price_data_alternate()
+                api_data = self._fetch_price_data_alternate(api_data)
             except ValueError:
-                self._state = None
-                self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
-                self._base_price = None
-                self._24h_volume = None
-                self._1h_change = None
-                self._24h_change = None
-                self._7d_change = None
-                self._30d_change = None
-                self._market_cap = None
-                self._circulating_supply = None
-                self._total_supply = None
-                self._all_time_high = None
-                self._all_time_low = None
-                self._24h_low = None
-                self._24h_high = None
-                self._image_url = None
+                self._update_all_properties()
+                return
+        CryptoInfoEntityManager.instance().set_cached_entity_data(self, api_data)
