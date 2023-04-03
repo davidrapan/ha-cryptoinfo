@@ -7,6 +7,7 @@ CONF_MULTIPLIER = "multiplier"
 CONF_UPDATE_FREQUENCY = "update_frequency"
 CONF_UNIT_OF_MEASUREMENT = "unit_of_measurement"
 CONF_USE_SIMPLE_PRICE = "use_simple_price"
+CONF_IS_DOMINANCE_SENSOR = "is_dominance_sensor"
 
 SENSOR_PREFIX = "Cryptoinfo "
 ATTR_LAST_UPDATE = "last_update"

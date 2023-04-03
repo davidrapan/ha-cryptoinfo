@@ -13,6 +13,7 @@ from .const.const import (
     _LOGGER,
     CONF_CRYPTOCURRENCY_NAME,
     CONF_CURRENCY_NAME,
+    CONF_IS_DOMINANCE_SENSOR,
     CONF_MULTIPLIER,
     CONF_UNIT_OF_MEASUREMENT,
     CONF_UPDATE_FREQUENCY,
@@ -46,6 +47,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_UPDATE_FREQUENCY, default=60): cv.string,
         vol.Optional(CONF_ID, default=""): cv.string,
         vol.Optional(CONF_USE_SIMPLE_PRICE, default=False): cv.boolean,
+        vol.Optional(CONF_IS_DOMINANCE_SENSOR, default=False): cv.boolean,
     }
 )
 
@@ -60,6 +62,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     multiplier = config.get(CONF_MULTIPLIER).strip()
     update_frequency = timedelta(minutes=(float(config.get(CONF_UPDATE_FREQUENCY))))
     use_simple_price = bool(config.get(CONF_USE_SIMPLE_PRICE))
+    is_dominance_sensor = bool(config.get(CONF_IS_DOMINANCE_SENSOR))
 
     entities = []
 
@@ -73,6 +76,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 update_frequency,
                 id_name,
                 use_simple_price,
+                is_dominance_sensor,
             )
         )
     except urllib.error.HTTPError as error:
@@ -92,7 +96,9 @@ class CryptoinfoSensor(Entity):
         update_frequency,
         id_name,
         use_simple_price,
+        is_dominance_sensor,
     ):
+        self._is_dominance_sensor = is_dominance_sensor
         self.data = None
         self.cryptocurrency_name = cryptocurrency_name
         self.currency_name = currency_name
@@ -100,13 +106,22 @@ class CryptoinfoSensor(Entity):
         self.multiplier = multiplier
         self.update = Throttle(update_frequency)(self._update)
         self._attr_device_class = SensorDeviceClass.MONETARY
-        self._name = (
-            SENSOR_PREFIX
-            + (id_name + " " if len(id_name) > 0 else "")
-            + cryptocurrency_name
-            + " "
-            + currency_name
-        )
+        if not self._is_dominance_sensor:
+            self._name = (
+                SENSOR_PREFIX
+                + (id_name + " " if len(id_name) > 0 else "")
+                + cryptocurrency_name
+                + " "
+                + currency_name
+            )
+        else:
+            self._name = (
+                SENSOR_PREFIX
+                + id_name if len(id_name) > 0 else (
+                    cryptocurrency_name
+                    + " Dominance"
+                )
+            )
         self._use_simple_price = use_simple_price
         self._icon = "mdi:bitcoin"
         self._state = None
@@ -121,11 +136,28 @@ class CryptoinfoSensor(Entity):
         self._circulating_supply = None
         self._total_supply = None
         self._state_class = "measurement"
-        self._attr_unique_id = cryptocurrency_name + currency_name + multiplier
+        if not self._is_dominance_sensor:
+            self._attr_unique_id = (
+                cryptocurrency_name
+                + currency_name
+                + str(multiplier)
+                + str(update_frequency)
+            )
+        else:
+            self._attr_unique_id = (
+                cryptocurrency_name
+                + str(multiplier)
+                + str(update_frequency)
+                + "_dom"
+            )
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def unique_id(self):
+        return self._attr_unique_id
 
     @property
     def icon(self):
@@ -145,21 +177,31 @@ class CryptoinfoSensor(Entity):
 
     @property
     def extra_state_attributes(self):
-        return {
+        base_attrs = {
             ATTR_LAST_UPDATE: self._last_update,
+            ATTR_MARKET_CAP: self._market_cap,
+        }
+        if self._is_dominance_sensor:
+            return base_attrs
+        simple_attrs = {
             ATTR_BASE_PRICE: self._base_price,
             ATTR_24H_VOLUME: self._24h_volume,
-            ATTR_1H_CHANGE: self._1h_change,
             ATTR_24H_CHANGE: self._24h_change,
+        }
+        if self._use_simple_price:
+            return {**base_attrs, **simple_attrs}
+        return {
+            **base_attrs,
+            **simple_attrs,
+            ATTR_1H_CHANGE: self._1h_change,
             ATTR_7D_CHANGE: self._7d_change,
             ATTR_30D_CHANGE: self._30d_change,
-            ATTR_MARKET_CAP: self._market_cap,
             ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
             ATTR_TOTAL_SUPPLY: self._total_supply,
         }
 
     def _fetch_price_data_main(self):
-        if self._use_simple_price:
+        if self._use_simple_price or self._is_dominance_sensor:
             raise ValueError()
         url = (
             API_ENDPOINT
@@ -210,6 +252,8 @@ class CryptoinfoSensor(Entity):
             raise ValueError()
 
     def _fetch_price_data_alternate(self):
+        if self._is_dominance_sensor:
+            raise ValueError()
         url = (
             API_ENDPOINT
             + "simple/price?ids="
@@ -254,9 +298,53 @@ class CryptoinfoSensor(Entity):
         else:
             raise ValueError()
 
+    def _fetch_dominance(self):
+        url = (
+            API_ENDPOINT
+            + "global"
+        )
+        r = None
+        try:
+            # sending get request
+            r = requests.get(url=url)
+            # extracting response json
+            self.data = r.json()["data"]
+            # multiply the price
+            dominance_data = self.data["market_cap_percentage"][self.cryptocurrency_name]
+        except Exception as error:
+            _LOGGER.error(
+                "Error fetching update from coingecko: "
+                + str(error)
+                + " - response status: "
+                + str(r.status_code if r is not None else None)
+                + " - "
+                + str(r.reason if r is not None else None)
+            )
+            dominance_data = None
+
+        if dominance_data:
+            # Set the values of the sensor
+            self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
+            self._state = float(dominance_data)
+            # set the attributes of the sensor
+            self._base_price = None
+            self._24h_volume = None
+            self._1h_change = None
+            self._24h_change = None
+            self._7d_change = None
+            self._30d_change = None
+            self._market_cap = self.data["total_market_cap"][self.cryptocurrency_name]
+            self._circulating_supply = None
+            self._total_supply = None
+        else:
+            raise ValueError()
+
     def _update(self):
         try:
-            self._fetch_price_data_main()
+            if self._is_dominance_sensor:
+                self._fetch_dominance()
+            else:
+                self._fetch_price_data_main()
         except ValueError:
             try:
                 self._fetch_price_data_alternate()
