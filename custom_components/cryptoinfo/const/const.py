@@ -20,6 +20,11 @@ ATTR_30D_CHANGE = "30d_change"
 ATTR_MARKET_CAP = "market_cap"
 ATTR_CIRCULATING_SUPPLY = "circulating_supply"
 ATTR_TOTAL_SUPPLY = "total_supply"
+ATTR_ALL_TIME_HIGH = "all_time_high"
+ATTR_ALL_TIME_LOW = "all_time_low"
+ATTR_24H_LOW = "24h_low"
+ATTR_24H_HIGH = "24h_high"
+ATTR_IMAGE_URL = "image_url"
 
 API_ENDPOINT = "https://api.coingecko.com/api/v3/"
 

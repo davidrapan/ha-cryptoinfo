@@ -29,6 +29,11 @@ from .const.const import (
     ATTR_MARKET_CAP,
     ATTR_CIRCULATING_SUPPLY,
     ATTR_TOTAL_SUPPLY,
+    ATTR_ALL_TIME_HIGH,
+    ATTR_ALL_TIME_LOW,
+    ATTR_24H_LOW,
+    ATTR_24H_HIGH,
+    ATTR_IMAGE_URL,
     API_ENDPOINT,
     CONF_ID,
 )
@@ -135,6 +140,11 @@ class CryptoinfoSensor(Entity):
         self._market_cap = None
         self._circulating_supply = None
         self._total_supply = None
+        self._all_time_high = None
+        self._all_time_low = None
+        self._24h_low = None
+        self._24h_high = None
+        self._image_url = None
         self._state_class = "measurement"
         if not self._is_dominance_sensor:
             self._attr_unique_id = (
@@ -198,6 +208,11 @@ class CryptoinfoSensor(Entity):
             ATTR_30D_CHANGE: self._30d_change,
             ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
             ATTR_TOTAL_SUPPLY: self._total_supply,
+            ATTR_ALL_TIME_HIGH: self._all_time_high,
+            ATTR_ALL_TIME_LOW: self._all_time_low,
+            ATTR_24H_LOW: self._24h_low,
+            ATTR_24H_HIGH: self._24h_high,
+            ATTR_IMAGE_URL: self._image_url,
         }
 
     def _fetch_price_data_main(self):
@@ -248,6 +263,11 @@ class CryptoinfoSensor(Entity):
             self._market_cap = r.json()[0]["market_cap"]
             self._circulating_supply = r.json()[0]["circulating_supply"]
             self._total_supply = r.json()[0]["total_supply"]
+            self._all_time_high = r.json()[0]["ath"]
+            self._all_time_low = r.json()[0]["atl"]
+            self._24h_low = r.json()[0]["low_24h"]
+            self._24h_high = r.json()[0]["high_24h"]
+            self._image_url = r.json()[0]["image"]
         else:
             raise ValueError()
 
@@ -295,6 +315,11 @@ class CryptoinfoSensor(Entity):
             self._market_cap = r.json()[self.cryptocurrency_name][self.currency_name+ "_market_cap"]
             self._circulating_supply = None
             self._total_supply = None
+            self._all_time_high = None
+            self._all_time_low = None
+            self._24h_low = None
+            self._24h_high = None
+            self._image_url = None
         else:
             raise ValueError()
 
@@ -336,6 +361,11 @@ class CryptoinfoSensor(Entity):
             self._market_cap = self.data["total_market_cap"][self.cryptocurrency_name]
             self._circulating_supply = None
             self._total_supply = None
+            self._all_time_high = None
+            self._all_time_low = None
+            self._24h_low = None
+            self._24h_high = None
+            self._image_url = None
         else:
             raise ValueError()
 
@@ -360,3 +390,8 @@ class CryptoinfoSensor(Entity):
                 self._market_cap = None
                 self._circulating_supply = None
                 self._total_supply = None
+                self._all_time_high = None
+                self._all_time_low = None
+                self._24h_low = None
+                self._24h_high = None
+                self._image_url = None
