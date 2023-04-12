@@ -63,6 +63,13 @@ class CryptoInfoEntityManager:
             CryptoInfoDataFetchType.PRICE_SIMPLE,
         ]
 
+    @property
+    def fetch_shared_types(self):
+        return [
+            CryptoInfoDataFetchType.DOMINANCE,
+            CryptoInfoDataFetchType.CHAIN_SUMMARY,
+        ]
+
     def get_fetch_type_from_str(self, fetch_type):
         for t in self.fetch_types:
             if t == fetch_type:
@@ -90,7 +97,7 @@ class CryptoInfoEntityManager:
         return tdelta.seconds if tdelta else 0
 
     def should_fetch_entity(self, entity):
-        if entity.fetch_type != CryptoInfoDataFetchType.DOMINANCE:
+        if entity.fetch_type not in self.fetch_shared_types:
             return True
         if entity.fetch_type not in self._api_data:
             return True
@@ -102,6 +109,8 @@ class CryptoInfoEntityManager:
         return False
 
     def set_cached_entity_data(self, entity, data):
+        if entity.fetch_type not in self.fetch_shared_types:
+            return
         self._api_data[entity.fetch_type] = data
         self._last_fetch[entity.fetch_type] = int(time.time())
 
