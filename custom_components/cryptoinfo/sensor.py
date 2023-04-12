@@ -17,6 +17,8 @@ from .const.const import (
     CONF_UNIT_OF_MEASUREMENT,
     CONF_UPDATE_FREQUENCY,
     CONF_API_MODE,
+    CONF_POOL_PREFIX,
+    CONF_FETCH_ARGS,
     SENSOR_PREFIX,
     ATTR_LAST_UPDATE,
     ATTR_24H_VOLUME,
@@ -35,19 +37,27 @@ from .const.const import (
     ATTR_IMAGE_URL,
     ATTR_DIFFICULTY,
     ATTR_HASHRATE,
+    ATTR_POOL_CONTROL_1000B,
+    ATTR_BLOCK_HEIGHT,
     API_BASE_URL_COINGECKO,
     API_BASE_URL_CRYPTOID,
     API_ENDPOINT_PRICE_MAIN,
     API_ENDPOINT_PRICE_ALT,
     API_ENDPOINT_DOMINANCE,
     API_ENDPOINT_CHAIN_SUMMARY,
+    API_ENDPOINT_CHAIN_CONTROL,
+    API_ENDPOINT_CHAIN_ORPHANS,
+    API_ENDPOINT_CHAIN_BLOCK_TIME,
     CONF_ID,
+    DAY_SECONDS,
 )
 
 from .manager import CryptoInfoEntityManager, CryptoInfoDataFetchType
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorDeviceClass
+from homeassistant.exceptions import TemplateError
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.template import Template
 from homeassistant.util import Throttle
 from homeassistant.helpers.entity import Entity
 
@@ -63,6 +73,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             CONF_API_MODE,
             default=str(CryptoInfoDataFetchType.PRICE_MAIN)
         ): vol.In(CryptoInfoEntityManager.instance().fetch_types),
+        vol.Optional(CONF_POOL_PREFIX, default=""): cv.string,
+        vol.Optional(CONF_FETCH_ARGS, default=""): cv.string,
     }
 )
 
@@ -77,12 +89,15 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     multiplier = config.get(CONF_MULTIPLIER).strip()
     update_frequency = timedelta(minutes=(float(config.get(CONF_UPDATE_FREQUENCY))))
     api_mode = config.get(CONF_API_MODE)
+    pool_prefix = config.get(CONF_POOL_PREFIX)
+    fetch_args = config.get(CONF_FETCH_ARGS)
 
     entities = []
 
     try:
         entities.append(
             CryptoinfoSensor(
+                hass,
                 cryptocurrency_name,
                 currency_name,
                 unit_of_measurement,
@@ -90,6 +105,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 update_frequency,
                 id_name,
                 api_mode,
+                pool_prefix,
+                fetch_args,
             )
         )
     except urllib.error.HTTPError as error:
@@ -103,6 +120,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class CryptoinfoSensor(Entity):
     def __init__(
         self,
+        hass,
         cryptocurrency_name,
         currency_name,
         unit_of_measurement,
@@ -110,12 +128,17 @@ class CryptoinfoSensor(Entity):
         update_frequency,
         id_name,
         api_mode,
+        pool_prefix,
+        fetch_args,
     ):
+        self.hass = hass
         self._fetch_type = CryptoInfoEntityManager.instance().get_fetch_type_from_str(api_mode)
         self._update_frequency = update_frequency
+        self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
         self.data = None
         self.cryptocurrency_name = cryptocurrency_name
         self.currency_name = currency_name
+        self.pool_prefix = pool_prefix
         self._unit_of_measurement = unit_of_measurement
         self.multiplier = multiplier
         self.update = Throttle(update_frequency)(self._update)
@@ -155,6 +178,8 @@ class CryptoinfoSensor(Entity):
         self._image_url = None
         self._difficulty = None
         self._hashrate = None
+        self._pool_control_1000b = None
+        self._block_height = None
         self._state_class = "measurement"
         if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
             self._attr_unique_id = (
@@ -170,6 +195,7 @@ class CryptoinfoSensor(Entity):
                 + str(multiplier)
                 + str(update_frequency)
             )
+        self._attr_available = True
 
     @property
     def update_frequency(self):
@@ -186,6 +212,10 @@ class CryptoinfoSensor(Entity):
     @property
     def unique_id(self):
         return self._attr_unique_id
+
+    @property
+    def available(self):
+        return self._attr_available
 
     @property
     def icon(self):
@@ -211,6 +241,13 @@ class CryptoinfoSensor(Entity):
         extra_attrs = {
             ATTR_MARKET_CAP: self._market_cap,
         }
+        if self._fetch_type == CryptoInfoDataFetchType.CHAIN_ORPHANS:
+            return {**base_attrs}
+        if self._fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
+            return {
+                **base_attrs,
+                ATTR_BLOCK_HEIGHT: self._block_height
+            }
         if self._fetch_type == CryptoInfoDataFetchType.DOMINANCE:
             return {**base_attrs, **extra_attrs}
         if self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
@@ -219,6 +256,11 @@ class CryptoinfoSensor(Entity):
                 ATTR_DIFFICULTY: self._difficulty,
                 ATTR_HASHRATE: self._hashrate,
                 ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
+            }
+        if self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+            return {
+                **base_attrs,
+                ATTR_POOL_CONTROL_1000B: self._pool_control_1000b,
             }
         simple_attrs = {
             ATTR_BASE_PRICE: self._base_price,
@@ -294,6 +336,32 @@ class CryptoinfoSensor(Entity):
     def _extract_data_chain_summary_full(self, json_data):
         return json_data
 
+    def _extract_data_chain_control_primary(self, api_data):
+        return api_data["nb100"]
+
+    def _extract_data_chain_control_full(self, json_data):
+        for pool in json_data["pools"]:
+            if pool["name"].startswith(self.pool_prefix):
+                return pool
+        raise ValueError("Pool Prefix not found")
+
+    def _extract_data_chain_orphans_primary(self, api_data):
+        orphans_start_timestamp = api_data["d"] * DAY_SECONDS
+        last_orphan_timestamp = (len(api_data["n"]) * DAY_SECONDS) + orphans_start_timestamp
+        last_orphan_date = datetime.fromtimestamp(last_orphan_timestamp).date()
+        today_date = datetime.now().date()
+        orphans_today = api_data["n"][-1] if today_date == last_orphan_date else 0
+        return orphans_today
+
+    def _extract_data_chain_orphans_full(self, json_data):
+        return json_data
+
+    def _extract_data_chain_block_time_primary(self, api_data):
+        return int(api_data)
+
+    def _extract_data_chain_block_time_full(self, json_data):
+        return json_data
+
     def _fetch_price_data_main(self, api_data=None):
         if not self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
             raise ValueError()
@@ -302,7 +370,7 @@ class CryptoinfoSensor(Entity):
             API_ENDPOINT_PRICE_MAIN.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
             self._extract_data_price_main_full, self._extract_data_price_main_primary
         )
-        if price_data:
+        if price_data is not None:
             self._update_all_properties(
                 state=float(price_data),
                 base_price=api_data["current_price"],
@@ -332,7 +400,7 @@ class CryptoinfoSensor(Entity):
             API_ENDPOINT_PRICE_ALT.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
             self._extract_data_price_simple_full, self._extract_data_price_simple_primary
         )
-        if price_data:
+        if price_data is not None:
             self._update_all_properties(
                 state=float(price_data),
                 base_price=api_data[self.currency_name],
@@ -351,7 +419,7 @@ class CryptoinfoSensor(Entity):
             self._extract_data_dominance_full,
             self._extract_data_dominance_primary
         )
-        if dominance_data:
+        if dominance_data is not None:
             self._update_all_properties(
                 state=float(dominance_data),
                 market_cap=api_data["total_market_cap"][self.cryptocurrency_name]
@@ -367,7 +435,7 @@ class CryptoinfoSensor(Entity):
             self._extract_data_chain_summary_full,
             self._extract_data_chain_summary_primary
         )
-        if summary_data:
+        if summary_data is not None:
             self._update_all_properties(
                 state=int(summary_data),
                 difficulty=api_data[self.cryptocurrency_name]["diff"],
@@ -377,6 +445,104 @@ class CryptoinfoSensor(Entity):
         else:
             raise ValueError()
         return self.data
+
+    def _fetch_chain_control(self, api_data=None):
+        control_data, api_data = self._api_fetch(
+            api_data,
+            API_ENDPOINT_CHAIN_CONTROL.format(API_BASE_URL_CRYPTOID, self.cryptocurrency_name),
+            self._extract_data_chain_control_full,
+            self._extract_data_chain_control_primary
+        )
+        if control_data is not None:
+            self._update_all_properties(
+                state=int(control_data),
+                pool_control_1000b=api_data["nb1000"],
+            )
+        else:
+            raise ValueError()
+        return self.data
+
+    def _fetch_chain_orphans(self, api_data=None):
+        orphans_data, api_data = self._api_fetch(
+            api_data,
+            API_ENDPOINT_CHAIN_ORPHANS.format(API_BASE_URL_CRYPTOID, self.cryptocurrency_name),
+            self._extract_data_chain_orphans_full,
+            self._extract_data_chain_orphans_primary
+        )
+        if orphans_data is not None:
+            self._update_all_properties(
+                state=int(orphans_data),
+            )
+        else:
+            raise ValueError()
+        return self.data
+
+    def _fetch_chain_block_time(self, api_data=None):
+        (block_height, ) = self._get_fetch_args()
+        if block_height is None:
+            _LOGGER.error("Error fetching " + self.name + " - No args supplied.")
+            raise ValueError()
+        try:
+            block_height = int(block_height)
+        except Exception:
+            _LOGGER.error("Error fetching " + self.name + " - Invalid block height supplied.")
+            raise ValueError()
+        if self._state is not None and self._state > 0 and self._block_height == block_height:
+            api_data = self._state
+        block_time_data, api_data = self._api_fetch(
+            api_data,
+            API_ENDPOINT_CHAIN_BLOCK_TIME.format(API_BASE_URL_CRYPTOID, self.cryptocurrency_name, block_height),
+            self._extract_data_chain_block_time_full,
+            self._extract_data_chain_block_time_primary
+        )
+        if block_time_data is not None:
+            self._update_all_properties(
+                state=int(block_time_data),
+                block_height=block_height,
+            )
+        else:
+            raise ValueError()
+        return self.data
+
+    def _render_fetch_args(self):
+        if self._fetch_args is None:
+            return None
+        args = self._fetch_args
+
+        if "{" not in args:
+            return args
+        else:
+            args_compiled = Template(args, self.hass)
+
+        if args_compiled:
+            try:
+                args_to_render = {"arguments": args}
+                rendered_args = args_compiled.render(args_to_render)
+            except TemplateError as ex:
+                _LOGGER.exception("Error rendering args template: %s", ex)
+                return
+        else:
+            rendered_args = None
+
+        if rendered_args == args:
+            # No template used. default behavior
+            pass
+        else:
+            # Template used. Construct the string used in the shell
+            args = f"{rendered_args}"
+        return args
+
+    def _get_fetch_args(self, min_length=1, expected_length=1, default_value=None):
+        rendered_args = self._render_fetch_args()
+        if rendered_args is None or not len(rendered_args):
+            return (None for x in range(expected_length))
+        split_args = rendered_args.split(" ")
+        args_len = len(split_args)
+        if not args_len >= min_length:
+            return (None for x in range(expected_length))
+        if args_len < expected_length:
+            split_args.extend([default_value for x in range(expected_length - args_len)])
+        return (arg.strip() for arg in split_args[:expected_length])
 
     def _update_all_properties(
         self,
@@ -397,6 +563,9 @@ class CryptoinfoSensor(Entity):
         image_url=None,
         difficulty=None,
         hashrate=None,
+        pool_control_1000b=None,
+        block_height=None,
+        available=True,
     ):
         self._state = state
         self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
@@ -415,6 +584,9 @@ class CryptoinfoSensor(Entity):
         self._24h_high = high_24h
         self._difficulty = difficulty
         self._hashrate = hashrate
+        self._pool_control_1000b = pool_control_1000b
+        self._block_height = block_height
+        self._attr_available = available
 
     def _update(self):
         api_data = None
@@ -425,12 +597,18 @@ class CryptoinfoSensor(Entity):
                 api_data = self._fetch_dominance(api_data)
             elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
                 api_data = self._fetch_chain_summary(api_data)
+            elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+                api_data = self._fetch_chain_control(api_data)
+            elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_ORPHANS:
+                api_data = self._fetch_chain_orphans(api_data)
+            elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
+                api_data = self._fetch_chain_block_time(api_data)
             else:
                 api_data = self._fetch_price_data_main(api_data)
         except ValueError:
             try:
                 api_data = self._fetch_price_data_alternate(api_data)
             except ValueError:
-                self._update_all_properties()
+                self._update_all_properties(available=False)
                 return
         CryptoInfoEntityManager.instance().set_cached_entity_data(self, api_data)

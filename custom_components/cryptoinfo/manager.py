@@ -5,6 +5,8 @@ class CryptoInfoFetchProp:
     def __init__(self, slug):
         self._slug = slug
         self._name = slug.replace("_", " ").title()
+        split_slug = self._slug.split("_")
+        self._id_slug = (slug[0] + split_slug[1][:2]) if len(split_slug) > 1 else slug[:3]
 
     @property
     def slug(self):
@@ -12,7 +14,7 @@ class CryptoInfoFetchProp:
 
     @property
     def id_slug(self):
-        return self._slug[:3]
+        return self._id_slug
 
     @property
     def name(self):
@@ -30,12 +32,21 @@ class CryptoInfoFetchProp:
         except Exception:
             return self.slug == str(other)
 
+    def __lt__(self, other):
+        try:
+            return self.slug < other.slug
+        except Exception:
+            return self.slug < str(other)
+
 
 class CryptoInfoDataFetchType:
     PRICE_MAIN = CryptoInfoFetchProp("price_main")
     PRICE_SIMPLE = CryptoInfoFetchProp("price_simple")
     DOMINANCE = CryptoInfoFetchProp("dominance")
     CHAIN_SUMMARY = CryptoInfoFetchProp("chain_summary")
+    CHAIN_CONTROL = CryptoInfoFetchProp("chain_control")
+    CHAIN_ORPHANS = CryptoInfoFetchProp("chain_orphans")
+    CHAIN_BLOCK_TIME = CryptoInfoFetchProp("chain_block_time")
 
 
 class CryptoInfoEntityManager:
@@ -54,6 +65,9 @@ class CryptoInfoEntityManager:
             CryptoInfoDataFetchType.PRICE_SIMPLE,
             CryptoInfoDataFetchType.DOMINANCE,
             CryptoInfoDataFetchType.CHAIN_SUMMARY,
+            CryptoInfoDataFetchType.CHAIN_CONTROL,
+            CryptoInfoDataFetchType.CHAIN_ORPHANS,
+            CryptoInfoDataFetchType.CHAIN_BLOCK_TIME,
         ]
 
     @property

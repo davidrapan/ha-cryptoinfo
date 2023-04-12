@@ -7,6 +7,8 @@ CONF_MULTIPLIER = "multiplier"
 CONF_UPDATE_FREQUENCY = "update_frequency"
 CONF_UNIT_OF_MEASUREMENT = "unit_of_measurement"
 CONF_API_MODE = "api_mode"
+CONF_POOL_PREFIX = "pool_prefix"
+CONF_FETCH_ARGS = "template_fetch_args"
 
 SENSOR_PREFIX = "Cryptoinfo "
 ATTR_LAST_UPDATE = "last_update"
@@ -26,6 +28,8 @@ ATTR_24H_HIGH = "24h_high"
 ATTR_IMAGE_URL = "image_url"
 ATTR_DIFFICULTY = "difficulty"
 ATTR_HASHRATE = "hashrate"
+ATTR_POOL_CONTROL_1000B = "pool_control_1000b"
+ATTR_BLOCK_HEIGHT = "block_height"
 
 API_BASE_URL_COINGECKO = "https://api.coingecko.com/api/v3/"
 API_BASE_URL_CRYPTOID = "https://chainz.cryptoid.info/"
@@ -41,5 +45,8 @@ API_ENDPOINT_DOMINANCE = "{0}global"
 API_ENDPOINT_CHAIN_SUMMARY = "{0}explorer/api.dws?q=summary"
 API_ENDPOINT_CHAIN_ORPHANS = "{0}explorer/index.orphans.dws?coin={1}"
 API_ENDPOINT_CHAIN_CONTROL = "{0}explorer/index.pools.dws?coin={1}"
+API_ENDPOINT_CHAIN_BLOCK_TIME = "{0}{1}/api.dws?q=getblocktime&height={2}"
+
+DAY_SECONDS = 60 * 60 * 24
 
 _LOGGER = logging.getLogger(__name__)
