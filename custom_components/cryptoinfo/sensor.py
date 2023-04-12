@@ -13,11 +13,10 @@ from .const.const import (
     _LOGGER,
     CONF_CRYPTOCURRENCY_NAME,
     CONF_CURRENCY_NAME,
-    CONF_IS_DOMINANCE_SENSOR,
     CONF_MULTIPLIER,
     CONF_UNIT_OF_MEASUREMENT,
     CONF_UPDATE_FREQUENCY,
-    CONF_USE_SIMPLE_PRICE,
+    CONF_API_MODE,
     SENSOR_PREFIX,
     ATTR_LAST_UPDATE,
     ATTR_24H_VOLUME,
@@ -34,10 +33,14 @@ from .const.const import (
     ATTR_24H_LOW,
     ATTR_24H_HIGH,
     ATTR_IMAGE_URL,
-    API_BASE_URL,
-    API_ENDPOINT_MAIN,
-    API_ENDPOINT_ALT,
-    API_ENDPOINT_DOM,
+    ATTR_DIFFICULTY,
+    ATTR_HASHRATE,
+    API_BASE_URL_COINGECKO,
+    API_BASE_URL_CRYPTOID,
+    API_ENDPOINT_PRICE_MAIN,
+    API_ENDPOINT_PRICE_ALT,
+    API_ENDPOINT_DOMINANCE,
+    API_ENDPOINT_CHAIN_SUMMARY,
     CONF_ID,
 )
 
@@ -56,8 +59,10 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_MULTIPLIER, default=1): cv.string,
         vol.Required(CONF_UPDATE_FREQUENCY, default=60): cv.string,
         vol.Optional(CONF_ID, default=""): cv.string,
-        vol.Optional(CONF_USE_SIMPLE_PRICE, default=False): cv.boolean,
-        vol.Optional(CONF_IS_DOMINANCE_SENSOR, default=False): cv.boolean,
+        vol.Optional(
+            CONF_API_MODE,
+            default=str(CryptoInfoDataFetchType.PRICE_MAIN)
+        ): vol.In(CryptoInfoEntityManager.instance().fetch_types),
     }
 )
 
@@ -71,8 +76,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     unit_of_measurement = config.get(CONF_UNIT_OF_MEASUREMENT).strip()
     multiplier = config.get(CONF_MULTIPLIER).strip()
     update_frequency = timedelta(minutes=(float(config.get(CONF_UPDATE_FREQUENCY))))
-    use_simple_price = bool(config.get(CONF_USE_SIMPLE_PRICE))
-    is_dominance_sensor = bool(config.get(CONF_IS_DOMINANCE_SENSOR))
+    api_mode = config.get(CONF_API_MODE)
 
     entities = []
 
@@ -85,8 +89,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 multiplier,
                 update_frequency,
                 id_name,
-                use_simple_price,
-                is_dominance_sensor,
+                api_mode,
             )
         )
     except urllib.error.HTTPError as error:
@@ -106,11 +109,9 @@ class CryptoinfoSensor(Entity):
         multiplier,
         update_frequency,
         id_name,
-        use_simple_price,
-        is_dominance_sensor,
+        api_mode,
     ):
-        self._is_dominance_sensor = is_dominance_sensor
-        self._fetch_type = CryptoInfoDataFetchType.PRICE_MAIN
+        self._fetch_type = CryptoInfoEntityManager.instance().get_fetch_type_from_str(api_mode)
         self._update_frequency = update_frequency
         self.data = None
         self.cryptocurrency_name = cryptocurrency_name
@@ -119,7 +120,15 @@ class CryptoinfoSensor(Entity):
         self.multiplier = multiplier
         self.update = Throttle(update_frequency)(self._update)
         self._attr_device_class = SensorDeviceClass.MONETARY
-        if not self._is_dominance_sensor:
+        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
+            self._name = (
+                SENSOR_PREFIX
+                + (id_name if len(id_name) > 0 else (
+                    cryptocurrency_name.upper()
+                    + " " + self._fetch_type.name
+                ))
+            )
+        else:
             self._name = (
                 SENSOR_PREFIX
                 + (id_name + " " if len(id_name) > 0 else "")
@@ -127,18 +136,6 @@ class CryptoinfoSensor(Entity):
                 + " "
                 + currency_name
             )
-        else:
-            self._name = (
-                SENSOR_PREFIX
-                + id_name if len(id_name) > 0 else (
-                    cryptocurrency_name
-                    + " Dominance"
-                )
-            )
-            self._fetch_type = CryptoInfoDataFetchType.DOMINANCE
-        self._use_simple_price = use_simple_price
-        if self._use_simple_price:
-            self._fetch_type = CryptoInfoDataFetchType.PRICE_SIMPLE
         self._icon = "mdi:bitcoin"
         self._state = None
         self._last_update = None
@@ -156,20 +153,22 @@ class CryptoinfoSensor(Entity):
         self._24h_low = None
         self._24h_high = None
         self._image_url = None
+        self._difficulty = None
+        self._hashrate = None
         self._state_class = "measurement"
-        if not self._is_dominance_sensor:
+        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
+            self._attr_unique_id = (
+                cryptocurrency_name
+                + str(multiplier)
+                + str(update_frequency)
+                + "_" + self._fetch_type.id_slug
+            )
+        else:
             self._attr_unique_id = (
                 cryptocurrency_name
                 + currency_name
                 + str(multiplier)
                 + str(update_frequency)
-            )
-        else:
-            self._attr_unique_id = (
-                cryptocurrency_name
-                + str(multiplier)
-                + str(update_frequency)
-                + "_dom"
             )
 
     @property
@@ -208,19 +207,33 @@ class CryptoinfoSensor(Entity):
     def extra_state_attributes(self):
         base_attrs = {
             ATTR_LAST_UPDATE: self._last_update,
+        }
+        extra_attrs = {
             ATTR_MARKET_CAP: self._market_cap,
         }
-        if self._is_dominance_sensor:
-            return base_attrs
+        if self._fetch_type == CryptoInfoDataFetchType.DOMINANCE:
+            return {**base_attrs, **extra_attrs}
+        if self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+            return {
+                **base_attrs,
+                ATTR_DIFFICULTY: self._difficulty,
+                ATTR_HASHRATE: self._hashrate,
+                ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
+            }
         simple_attrs = {
             ATTR_BASE_PRICE: self._base_price,
             ATTR_24H_VOLUME: self._24h_volume,
             ATTR_24H_CHANGE: self._24h_change,
         }
-        if self._use_simple_price:
-            return {**base_attrs, **simple_attrs}
+        if self._fetch_type == CryptoInfoDataFetchType.PRICE_SIMPLE:
+            return {
+                **base_attrs,
+                **extra_attrs,
+                **simple_attrs
+            }
         return {
             **base_attrs,
+            **extra_attrs,
             **simple_attrs,
             ATTR_1H_CHANGE: self._1h_change,
             ATTR_7D_CHANGE: self._7d_change,
@@ -275,12 +288,18 @@ class CryptoinfoSensor(Entity):
     def _extract_data_dominance_full(self, json_data):
         return json_data["data"]
 
+    def _extract_data_chain_summary_primary(self, api_data):
+        return api_data[self.cryptocurrency_name]["height"]
+
+    def _extract_data_chain_summary_full(self, json_data):
+        return json_data
+
     def _fetch_price_data_main(self, api_data=None):
-        if self._use_simple_price or self._is_dominance_sensor:
+        if not self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
             raise ValueError()
         price_data, api_data = self._api_fetch(
             api_data,
-            API_ENDPOINT_MAIN.format(API_BASE_URL, self.cryptocurrency_name, self.currency_name),
+            API_ENDPOINT_PRICE_MAIN.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
             self._extract_data_price_main_full, self._extract_data_price_main_primary
         )
         if price_data:
@@ -306,11 +325,11 @@ class CryptoinfoSensor(Entity):
         return self.data
 
     def _fetch_price_data_alternate(self, api_data=None):
-        if self._is_dominance_sensor:
+        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
             raise ValueError()
         price_data, api_data = self._api_fetch(
             api_data,
-            API_ENDPOINT_ALT.format(API_BASE_URL, self.cryptocurrency_name, self.currency_name),
+            API_ENDPOINT_PRICE_ALT.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
             self._extract_data_price_simple_full, self._extract_data_price_simple_primary
         )
         if price_data:
@@ -328,7 +347,7 @@ class CryptoinfoSensor(Entity):
     def _fetch_dominance(self, api_data=None):
         dominance_data, api_data = self._api_fetch(
             api_data,
-            API_ENDPOINT_DOM.format(API_BASE_URL),
+            API_ENDPOINT_DOMINANCE.format(API_BASE_URL_COINGECKO),
             self._extract_data_dominance_full,
             self._extract_data_dominance_primary
         )
@@ -336,6 +355,24 @@ class CryptoinfoSensor(Entity):
             self._update_all_properties(
                 state=float(dominance_data),
                 market_cap=api_data["total_market_cap"][self.cryptocurrency_name]
+            )
+        else:
+            raise ValueError()
+        return self.data
+
+    def _fetch_chain_summary(self, api_data=None):
+        summary_data, api_data = self._api_fetch(
+            api_data,
+            API_ENDPOINT_CHAIN_SUMMARY.format(API_BASE_URL_CRYPTOID),
+            self._extract_data_chain_summary_full,
+            self._extract_data_chain_summary_primary
+        )
+        if summary_data:
+            self._update_all_properties(
+                state=int(summary_data),
+                difficulty=api_data[self.cryptocurrency_name]["diff"],
+                circulating_supply=api_data[self.cryptocurrency_name]["supply"],
+                hashrate=api_data[self.cryptocurrency_name]["hashrate"],
             )
         else:
             raise ValueError()
@@ -358,6 +395,8 @@ class CryptoinfoSensor(Entity):
         low_24h=None,
         high_24h=None,
         image_url=None,
+        difficulty=None,
+        hashrate=None,
     ):
         self._state = state
         self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
@@ -374,15 +413,18 @@ class CryptoinfoSensor(Entity):
         self._all_time_low = all_time_low
         self._24h_low = low_24h
         self._24h_high = high_24h
-        self._image_url = image_url
+        self._difficulty = difficulty
+        self._hashrate = hashrate
 
     def _update(self):
         api_data = None
         if not CryptoInfoEntityManager.instance().should_fetch_entity(self):
             api_data = CryptoInfoEntityManager.instance().fetch_cached_entity_data(self)
         try:
-            if self._is_dominance_sensor:
+            if self._fetch_type == CryptoInfoDataFetchType.DOMINANCE:
                 api_data = self._fetch_dominance(api_data)
+            elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+                api_data = self._fetch_chain_summary(api_data)
             else:
                 api_data = self._fetch_price_data_main(api_data)
         except ValueError:

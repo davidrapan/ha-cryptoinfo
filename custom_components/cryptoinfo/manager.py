@@ -1,10 +1,41 @@
 import time
 
 
+class CryptoInfoFetchProp:
+    def __init__(self, slug):
+        self._slug = slug
+        self._name = slug.replace("_", " ").title()
+
+    @property
+    def slug(self):
+        return self._slug
+
+    @property
+    def id_slug(self):
+        return self._slug[:3]
+
+    @property
+    def name(self):
+        return self._name
+
+    def __repr__(self):
+        return self._slug
+
+    def __hash__(self):
+        return hash(self._slug)
+
+    def __eq__(self, other):
+        try:
+            return self.slug == other.slug
+        except Exception:
+            return self.slug == str(other)
+
+
 class CryptoInfoDataFetchType:
-    PRICE_MAIN = "price_main"
-    PRICE_SIMPLE = "price_simple"
-    DOMINANCE = "dominance"
+    PRICE_MAIN = CryptoInfoFetchProp("price_main")
+    PRICE_SIMPLE = CryptoInfoFetchProp("price_simple")
+    DOMINANCE = CryptoInfoFetchProp("dominance")
+    CHAIN_SUMMARY = CryptoInfoFetchProp("chain_summary")
 
 
 class CryptoInfoEntityManager:
@@ -15,6 +46,28 @@ class CryptoInfoEntityManager:
         self._api_data = dict()
         self._fetch_frequency = dict()
         self._last_fetch = dict()
+
+    @property
+    def fetch_types(self):
+        return [
+            CryptoInfoDataFetchType.PRICE_MAIN,
+            CryptoInfoDataFetchType.PRICE_SIMPLE,
+            CryptoInfoDataFetchType.DOMINANCE,
+            CryptoInfoDataFetchType.CHAIN_SUMMARY,
+        ]
+
+    @property
+    def fetch_price_types(self):
+        return [
+            CryptoInfoDataFetchType.PRICE_MAIN,
+            CryptoInfoDataFetchType.PRICE_SIMPLE,
+        ]
+
+    def get_fetch_type_from_str(self, fetch_type):
+        for t in self.fetch_types:
+            if t == fetch_type:
+                return t
+        return CryptoInfoDataFetchType.PRICE_MAIN
 
     @classmethod
     def instance(cls):
