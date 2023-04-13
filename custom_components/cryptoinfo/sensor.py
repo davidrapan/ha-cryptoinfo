@@ -131,42 +131,31 @@ class CryptoinfoSensor(Entity):
         pool_prefix,
         fetch_args,
     ):
+        # Internal Properties
         self.hass = hass
-        self._fetch_type = CryptoInfoEntityManager.instance().get_fetch_type_from_str(api_mode)
-        self._update_frequency = update_frequency
-        self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
         self.data = None
         self.cryptocurrency_name = cryptocurrency_name
         self.currency_name = currency_name
         self.pool_prefix = pool_prefix
-        self._unit_of_measurement = unit_of_measurement
         self.multiplier = multiplier
+        self._internal_id_name = id_name
+        self._fetch_type = CryptoInfoEntityManager.instance().get_fetch_type_from_str(api_mode)
+        self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
+        self._update_frequency = update_frequency
+
+        # HASS Attributes
         self.update = Throttle(update_frequency)(self._update)
-        if self._fetch_type in CryptoInfoEntityManager.instance().fetch_price_types:
-            self._attr_device_class = SensorDeviceClass.MONETARY
-        elif self._fetch_type in CryptoInfoEntityManager.instance().fetch_time_types:
-            self._attr_device_class = SensorDeviceClass.DURATION
-        else:
-            self._attr_device_class = None
-        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
-            self._name = (
-                SENSOR_PREFIX
-                + (id_name if len(id_name) > 0 else (
-                    cryptocurrency_name.upper()
-                    + " " + self._fetch_type.name
-                ))
-            )
-        else:
-            self._name = (
-                SENSOR_PREFIX
-                + (id_name + " " if len(id_name) > 0 else "")
-                + cryptocurrency_name
-                + " "
-                + currency_name
-            )
-        self._icon = "mdi:bitcoin"
+        self._attr_unique_id = self._build_unique_id()
+        self._name = self._build_name()
         self._state = None
         self._last_update = None
+        self._icon = "mdi:bitcoin"
+        self._attr_device_class = self._build_device_class()
+        self._state_class = "measurement"
+        self._attr_available = True
+        self._unit_of_measurement = unit_of_measurement
+
+        # Sensor Attributes
         self._base_price = None
         self._24h_volume = None
         self._1h_change = None
@@ -185,22 +174,6 @@ class CryptoinfoSensor(Entity):
         self._hashrate = None
         self._pool_control_1000b = None
         self._block_height = None
-        self._state_class = "measurement"
-        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
-            self._attr_unique_id = (
-                cryptocurrency_name
-                + str(multiplier)
-                + str(update_frequency)
-                + "_" + self._fetch_type.id_slug
-            )
-        else:
-            self._attr_unique_id = (
-                cryptocurrency_name
-                + currency_name
-                + str(multiplier)
-                + str(update_frequency)
-            )
-        self._attr_available = True
 
     @property
     def update_frequency(self):
@@ -293,6 +266,48 @@ class CryptoinfoSensor(Entity):
             ATTR_24H_HIGH: self._24h_high,
             ATTR_IMAGE_URL: self._image_url,
         }
+
+    def _build_name(self):
+        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
+            return (
+                SENSOR_PREFIX
+                + (self._internal_id_name if len(self._internal_id_name) > 0 else (
+                    self.cryptocurrency_name.upper()
+                    + " " + self._fetch_type.name
+                ))
+            )
+        else:
+            return (
+                SENSOR_PREFIX
+                + (self._internal_id_name + " " if len(self._internal_id_name) > 0 else "")
+                + self.cryptocurrency_name
+                + " "
+                + self.currency_name
+            )
+
+    def _build_unique_id(self):
+        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
+            return (
+                self.cryptocurrency_name
+                + str(self.multiplier)
+                + str(self._update_frequency)
+                + "_" + self._fetch_type.id_slug
+            )
+        else:
+            return (
+                self.cryptocurrency_name
+                + self.currency_name
+                + str(self.multiplier)
+                + str(self._update_frequency)
+            )
+
+    def _build_device_class(self):
+        if self._fetch_type in CryptoInfoEntityManager.instance().fetch_price_types:
+            return SensorDeviceClass.MONETARY
+        elif self._fetch_type in CryptoInfoEntityManager.instance().fetch_time_types:
+            return SensorDeviceClass.DURATION
+        else:
+            return None
 
     def _log_api_error(self, error, r):
         _LOGGER.error(
