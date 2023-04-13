@@ -78,6 +78,12 @@ class CryptoInfoEntityManager:
         ]
 
     @property
+    def fetch_time_types(self):
+        return [
+            CryptoInfoDataFetchType.CHAIN_BLOCK_TIME,
+        ]
+
+    @property
     def fetch_shared_types(self):
         return [
             CryptoInfoDataFetchType.DOMINANCE,

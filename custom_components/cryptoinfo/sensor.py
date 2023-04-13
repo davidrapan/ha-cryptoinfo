@@ -142,7 +142,12 @@ class CryptoinfoSensor(Entity):
         self._unit_of_measurement = unit_of_measurement
         self.multiplier = multiplier
         self.update = Throttle(update_frequency)(self._update)
-        self._attr_device_class = SensorDeviceClass.MONETARY
+        if self._fetch_type in CryptoInfoEntityManager.instance().fetch_price_types:
+            self._attr_device_class = SensorDeviceClass.MONETARY
+        elif self._fetch_type in CryptoInfoEntityManager.instance().fetch_time_types:
+            self._attr_device_class = SensorDeviceClass.DURATION
+        else:
+            self._attr_device_class = None
         if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
             self._name = (
                 SENSOR_PREFIX
