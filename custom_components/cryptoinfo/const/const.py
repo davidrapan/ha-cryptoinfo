@@ -9,6 +9,8 @@ CONF_UNIT_OF_MEASUREMENT = "unit_of_measurement"
 CONF_API_MODE = "api_mode"
 CONF_POOL_PREFIX = "pool_prefix"
 CONF_FETCH_ARGS = "template_fetch_args"
+CONF_EXTRA_SENSORS = "extra_sensors"
+CONF_EXTRA_SENSOR_PROPERTY = "property"
 
 SENSOR_PREFIX = "Cryptoinfo "
 ATTR_LAST_UPDATE = "last_update"
@@ -22,14 +24,18 @@ ATTR_MARKET_CAP = "market_cap"
 ATTR_CIRCULATING_SUPPLY = "circulating_supply"
 ATTR_TOTAL_SUPPLY = "total_supply"
 ATTR_ALL_TIME_HIGH = "all_time_high"
+ATTR_ALL_TIME_HIGH_DISTANCE = "all_time_high_distance"
 ATTR_ALL_TIME_LOW = "all_time_low"
 ATTR_24H_LOW = "24h_low"
 ATTR_24H_HIGH = "24h_high"
 ATTR_IMAGE_URL = "image_url"
 ATTR_DIFFICULTY = "difficulty"
 ATTR_HASHRATE = "hashrate"
+ATTR_HASHRATE_GH = "hashrate_gh"
 ATTR_POOL_CONTROL_1000B = "pool_control_1000b"
 ATTR_BLOCK_HEIGHT = "block_height"
+ATTR_DIFFICULTY_BLOCK_PROGRESS = "difficulty_block_progress"
+ATTR_DIFFICULTY_RETARGET_HEIGHT = "difficulty_retarget_height"
 
 API_BASE_URL_COINGECKO = "https://api.coingecko.com/api/v3/"
 API_BASE_URL_CRYPTOID = "https://chainz.cryptoid.info/"
@@ -48,5 +54,7 @@ API_ENDPOINT_CHAIN_CONTROL = "{0}explorer/index.pools.dws?coin={1}"
 API_ENDPOINT_CHAIN_BLOCK_TIME = "{0}{1}/api.dws?q=getblocktime&height={2}"
 
 DAY_SECONDS = 60 * 60 * 24
+
+BLOCKCHAIN_DIFFICULTY_WINDOW = 2016
 
 _LOGGER = logging.getLogger(__name__)

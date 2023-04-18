@@ -19,6 +19,8 @@ from .const.const import (
     CONF_API_MODE,
     CONF_POOL_PREFIX,
     CONF_FETCH_ARGS,
+    CONF_EXTRA_SENSORS,
+    CONF_EXTRA_SENSOR_PROPERTY,
     SENSOR_PREFIX,
     ATTR_LAST_UPDATE,
     ATTR_24H_VOLUME,
@@ -31,14 +33,18 @@ from .const.const import (
     ATTR_CIRCULATING_SUPPLY,
     ATTR_TOTAL_SUPPLY,
     ATTR_ALL_TIME_HIGH,
+    ATTR_ALL_TIME_HIGH_DISTANCE,
     ATTR_ALL_TIME_LOW,
     ATTR_24H_LOW,
     ATTR_24H_HIGH,
     ATTR_IMAGE_URL,
     ATTR_DIFFICULTY,
     ATTR_HASHRATE,
+    ATTR_HASHRATE_GH,
     ATTR_POOL_CONTROL_1000B,
     ATTR_BLOCK_HEIGHT,
+    ATTR_DIFFICULTY_BLOCK_PROGRESS,
+    ATTR_DIFFICULTY_RETARGET_HEIGHT,
     API_BASE_URL_COINGECKO,
     API_BASE_URL_CRYPTOID,
     API_ENDPOINT_PRICE_MAIN,
@@ -49,6 +55,7 @@ from .const.const import (
     API_ENDPOINT_CHAIN_ORPHANS,
     API_ENDPOINT_CHAIN_BLOCK_TIME,
     CONF_ID,
+    BLOCKCHAIN_DIFFICULTY_WINDOW,
     DAY_SECONDS,
 )
 
@@ -60,23 +67,6 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.template import Template
 from homeassistant.util import Throttle
 from homeassistant.helpers.entity import Entity
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_CRYPTOCURRENCY_NAME, default="bitcoin"): cv.string,
-        vol.Required(CONF_CURRENCY_NAME, default="usd"): cv.string,
-        vol.Optional(CONF_UNIT_OF_MEASUREMENT, default="$"): cv.string,
-        vol.Required(CONF_MULTIPLIER, default=1): cv.string,
-        vol.Required(CONF_UPDATE_FREQUENCY, default=60): cv.string,
-        vol.Optional(CONF_ID, default=""): cv.string,
-        vol.Optional(
-            CONF_API_MODE,
-            default=str(CryptoInfoDataFetchType.PRICE_MAIN)
-        ): vol.In(CryptoInfoEntityManager.instance().fetch_types),
-        vol.Optional(CONF_POOL_PREFIX, default=""): cv.string,
-        vol.Optional(CONF_FETCH_ARGS, default=""): cv.string,
-    }
-)
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
@@ -91,24 +81,26 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     api_mode = config.get(CONF_API_MODE)
     pool_prefix = config.get(CONF_POOL_PREFIX)
     fetch_args = config.get(CONF_FETCH_ARGS)
+    extra_sensors = config.get(CONF_EXTRA_SENSORS, [])
 
     entities = []
 
     try:
-        entities.append(
-            CryptoinfoSensor(
-                hass,
-                cryptocurrency_name,
-                currency_name,
-                unit_of_measurement,
-                multiplier,
-                update_frequency,
-                id_name,
-                api_mode,
-                pool_prefix,
-                fetch_args,
-            )
+        new_sensor = CryptoinfoSensor(
+            hass,
+            cryptocurrency_name,
+            currency_name,
+            unit_of_measurement,
+            multiplier,
+            update_frequency,
+            id_name,
+            api_mode,
+            pool_prefix,
+            fetch_args,
+            extra_sensors,
         )
+        entities.append(new_sensor)
+        entities.extend(new_sensor._get_child_sensors())
     except urllib.error.HTTPError as error:
         _LOGGER.error(error.reason)
         return False
@@ -130,6 +122,8 @@ class CryptoinfoSensor(Entity):
         api_mode,
         pool_prefix,
         fetch_args,
+        extra_sensors,
+        is_child_sensor=False,
     ):
         # Internal Properties
         self.hass = hass
@@ -142,6 +136,9 @@ class CryptoinfoSensor(Entity):
         self._fetch_type = CryptoInfoEntityManager.instance().get_fetch_type_from_str(api_mode)
         self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
         self._update_frequency = update_frequency
+        self._is_child_sensor = is_child_sensor
+        self._child_sensors = list()
+        self._child_sensor_config = extra_sensors
 
         # HASS Attributes
         self.update = Throttle(update_frequency)(self._update)
@@ -174,6 +171,10 @@ class CryptoinfoSensor(Entity):
         self._hashrate = None
         self._pool_control_1000b = None
         self._block_height = None
+
+    @property
+    def is_child_sensor(self):
+        return self._is_child_sensor
 
     @property
     def update_frequency(self):
@@ -212,67 +213,163 @@ class CryptoinfoSensor(Entity):
         return self._state
 
     @property
-    def extra_state_attributes(self):
+    def difficulty_block_progress(self):
+        if self.state is None:
+            return None
+        return int(self.state % BLOCKCHAIN_DIFFICULTY_WINDOW)
+
+    @property
+    def difficulty_retarget_height(self):
+        if self.state is None:
+            return None
+        return int(self.state + (BLOCKCHAIN_DIFFICULTY_WINDOW - self.difficulty_block_progress))
+
+    @property
+    def hashrate_gh(self):
+        if self._hashrate is None:
+            return None
+        return round(float(self._hashrate) / 1e9, 4)
+
+    @property
+    def all_time_high_distance(self):
+        if self._all_time_high is None or self.state is None:
+            return None
+        return round(float(self._all_time_high) - self.state, 2)
+
+    def get_extra_state_attrs(self, full_attr_force=False):
         base_attrs = {
             ATTR_LAST_UPDATE: self._last_update,
         }
-        extra_attrs = {
+        market_cap_attrs = {
             ATTR_MARKET_CAP: self._market_cap,
         }
-        if self._fetch_type == CryptoInfoDataFetchType.CHAIN_ORPHANS:
-            return {**base_attrs}
-        if self._fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
-            return {
-                **base_attrs,
-                ATTR_BLOCK_HEIGHT: self._block_height
-            }
-        if self._fetch_type == CryptoInfoDataFetchType.DOMINANCE:
-            return {**base_attrs, **extra_attrs}
-        if self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
-            return {
-                **base_attrs,
-                ATTR_DIFFICULTY: self._difficulty,
-                ATTR_HASHRATE: self._hashrate,
-                ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
-            }
-        if self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
-            return {
-                **base_attrs,
-                ATTR_POOL_CONTROL_1000B: self._pool_control_1000b,
-            }
-        simple_attrs = {
+        simple_price_attrs = {
             ATTR_BASE_PRICE: self._base_price,
             ATTR_24H_VOLUME: self._24h_volume,
             ATTR_24H_CHANGE: self._24h_change,
         }
-        if self._fetch_type == CryptoInfoDataFetchType.PRICE_SIMPLE:
-            return {
-                **base_attrs,
-                **extra_attrs,
-                **simple_attrs
-            }
-        return {
-            **base_attrs,
-            **extra_attrs,
-            **simple_attrs,
-            ATTR_1H_CHANGE: self._1h_change,
-            ATTR_7D_CHANGE: self._7d_change,
-            ATTR_30D_CHANGE: self._30d_change,
-            ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
-            ATTR_TOTAL_SUPPLY: self._total_supply,
-            ATTR_ALL_TIME_HIGH: self._all_time_high,
-            ATTR_ALL_TIME_LOW: self._all_time_low,
-            ATTR_24H_LOW: self._24h_low,
-            ATTR_24H_HIGH: self._24h_high,
-            ATTR_IMAGE_URL: self._image_url,
+        output_attrs = {
+            **base_attrs
         }
+        while True:
+            if self.is_child_sensor or self._fetch_type == CryptoInfoDataFetchType.CHAIN_ORPHANS:
+                if not full_attr_force:
+                    break
+            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
+                output_attrs = {
+                    **output_attrs,
+                    ATTR_BLOCK_HEIGHT: self._block_height
+                }
+                if not full_attr_force:
+                    break
+            if self._fetch_type == CryptoInfoDataFetchType.DOMINANCE:
+                output_attrs = {
+                    **output_attrs,
+                    **market_cap_attrs
+                }
+                if not full_attr_force:
+                    break
+            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+                output_attrs = {
+                    **output_attrs,
+                    ATTR_DIFFICULTY: self._difficulty,
+                    ATTR_HASHRATE: self._hashrate,
+                }
+                if not full_attr_force:
+                    output_attrs = {
+                        **output_attrs,
+                        ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
+                    }
+                    break
+            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+                output_attrs = {
+                    **output_attrs,
+                    ATTR_POOL_CONTROL_1000B: self._pool_control_1000b,
+                }
+                if not full_attr_force:
+                    break
+            if self._fetch_type == CryptoInfoDataFetchType.PRICE_SIMPLE:
+                output_attrs = {
+                    **output_attrs,
+                    **market_cap_attrs,
+                    **simple_price_attrs
+                }
+                if not full_attr_force:
+                    break
+            output_attrs = {
+                **output_attrs,
+                **market_cap_attrs,
+                **simple_price_attrs,
+                ATTR_1H_CHANGE: self._1h_change,
+                ATTR_7D_CHANGE: self._7d_change,
+                ATTR_30D_CHANGE: self._30d_change,
+                ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
+                ATTR_TOTAL_SUPPLY: self._total_supply,
+                ATTR_ALL_TIME_HIGH: self._all_time_high,
+                ATTR_ALL_TIME_LOW: self._all_time_low,
+                ATTR_24H_LOW: self._24h_low,
+                ATTR_24H_HIGH: self._24h_high,
+                ATTR_IMAGE_URL: self._image_url,
+            }
+            break
+        return output_attrs
+
+    @property
+    def extra_state_attributes(self):
+        return self.get_extra_state_attrs()
+
+    def get_extra_sensor_attrs(self, full_attr_force=False):
+        output_attrs = self.get_extra_state_attrs(full_attr_force=full_attr_force)
+        while True:
+            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+                output_attrs = {
+                    **output_attrs,
+                    ATTR_DIFFICULTY_BLOCK_PROGRESS: self.difficulty_block_progress,
+                    ATTR_DIFFICULTY_RETARGET_HEIGHT: self.difficulty_retarget_height,
+                    ATTR_HASHRATE_GH: self.hashrate_gh,
+                }
+                if not full_attr_force:
+                    break
+            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
+                output_attrs = {
+                    **output_attrs,
+                    ATTR_ALL_TIME_HIGH_DISTANCE: self.all_time_high_distance,
+                }
+                if not full_attr_force:
+                    break
+            break
+        return output_attrs
+
+    @property
+    def all_extra_sensor_keys(self):
+        return self.get_extra_sensor_attrs(full_attr_force=True).keys()
+
+    @classmethod
+    def get_valid_extra_sensor_keys(cls):
+        empty_sensor = CryptoinfoSensor(*["" for x in range(11)])
+        keys = list(empty_sensor.all_extra_sensor_keys)
+        del empty_sensor
+        return keys
+
+    @property
+    def extra_sensor_attributes(self):
+        return self.get_extra_sensor_attrs()
+
+    @property
+    def valid_attribute_keys(self):
+        base_keys = list(self.extra_sensor_attributes.keys())
+        return base_keys[:]
 
     def _build_name(self):
         if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
             return (
                 SENSOR_PREFIX
                 + (self._internal_id_name if len(self._internal_id_name) > 0 else (
-                    self.cryptocurrency_name.upper()
+                    (
+                        self.cryptocurrency_name.upper()
+                        if len(self.cryptocurrency_name) <= 6
+                        else self.cryptocurrency_name.title()
+                    )
                     + " " + self._fetch_type.name
                 ))
             )
@@ -608,6 +705,43 @@ class CryptoinfoSensor(Entity):
         self._block_height = block_height
         self._attr_available = available
 
+        self._update_child_sensors()
+
+    def get_child_data(self, attribute_key):
+        child_data = self.extra_sensor_attributes.get(attribute_key)
+        print(f"data is {child_data}")
+        return child_data
+
+    def _update_child_sensors(self):
+        if not len(self._child_sensors) > 0:
+            return
+
+        for sensor in self._child_sensors:
+            sensor._update()
+
+    def _get_child_sensors(self):
+        child_sensors = list()
+        if self._child_sensor_config is None or not len(self._child_sensor_config):
+            return child_sensors
+
+        valid_child_conf = list([
+            conf for conf in self._child_sensor_config
+            if conf[CONF_EXTRA_SENSOR_PROPERTY] in self.valid_attribute_keys
+        ])
+
+        for conf in valid_child_conf:
+            attribute_key = conf[CONF_EXTRA_SENSOR_PROPERTY]
+            unit_of_measurement = conf[CONF_UNIT_OF_MEASUREMENT]
+            child_sensors.append(
+                CryptoinfoChildSensor(
+                    self,
+                    attribute_key,
+                    unit_of_measurement,
+                )
+            )
+        self._child_sensors.extend(child_sensors)
+        return child_sensors
+
     def _update(self):
         api_data = None
         if not CryptoInfoEntityManager.instance().should_fetch_entity(self):
@@ -632,3 +766,63 @@ class CryptoinfoSensor(Entity):
                 self._update_all_properties(available=False)
                 return
         CryptoInfoEntityManager.instance().set_cached_entity_data(self, api_data)
+
+
+class CryptoinfoChildSensor(CryptoinfoSensor):
+    def __init__(
+        self,
+        parent_sensor,
+        attribute_key,
+        unit_of_measurement,
+        *args,
+        **kwargs
+    ):
+        super().__init__(
+            parent_sensor.hass,
+            parent_sensor.cryptocurrency_name,
+            parent_sensor.currency_name,
+            unit_of_measurement,
+            parent_sensor.multiplier,
+            parent_sensor._update_frequency,
+            "",
+            CryptoInfoEntityManager.instance().get_extra_sensor_fetch_type_from_str(attribute_key),
+            parent_sensor.pool_prefix,
+            parent_sensor._fetch_args,
+            None,
+            is_child_sensor=True,
+        )
+        self._parent_sensor = parent_sensor
+        self._attribute_key = attribute_key
+
+    def _update(self):
+        new_state = self._parent_sensor.get_child_data(self._attribute_key)
+        if new_state != self._state:
+            self._update_all_properties(state=new_state)
+
+
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {
+        vol.Required(CONF_CRYPTOCURRENCY_NAME, default="bitcoin"): cv.string,
+        vol.Required(CONF_CURRENCY_NAME, default="usd"): cv.string,
+        vol.Optional(CONF_UNIT_OF_MEASUREMENT, default="$"): cv.string,
+        vol.Required(CONF_MULTIPLIER, default=1): cv.string,
+        vol.Required(CONF_UPDATE_FREQUENCY, default=60): cv.string,
+        vol.Optional(CONF_ID, default=""): cv.string,
+        vol.Optional(
+            CONF_API_MODE,
+            default=str(CryptoInfoDataFetchType.PRICE_MAIN)
+        ): vol.In(CryptoInfoEntityManager.instance().fetch_types),
+        vol.Optional(CONF_POOL_PREFIX, default=""): cv.string,
+        vol.Optional(CONF_FETCH_ARGS, default=""): cv.string,
+        vol.Optional(CONF_EXTRA_SENSORS): vol.All(
+            cv.ensure_list,
+            [
+                {
+                    vol.Optional(CONF_EXTRA_SENSOR_PROPERTY): vol.In(CryptoinfoSensor.get_valid_extra_sensor_keys()),
+                    vol.Optional(CONF_UNIT_OF_MEASUREMENT, default="$"): cv.string,
+                }
+            ],
+            vol.Unique(),
+        ),
+    }
+)

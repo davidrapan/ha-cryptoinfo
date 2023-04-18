@@ -4,9 +4,22 @@ import time
 class CryptoInfoFetchProp:
     def __init__(self, slug):
         self._slug = slug
-        self._name = slug.replace("_", " ").title()
+        self._name = self._build_name()
+        self._id_slug = self._build_id_slug()
+
+    def _build_name(self):
+        return self._slug.replace("extrasensor_", "").replace("_", " ").title()
+
+    def _build_id_slug(self):
         split_slug = self._slug.split("_")
-        self._id_slug = (slug[0] + split_slug[1][:2]) if len(split_slug) > 1 else slug[:3]
+        if len(split_slug) > 1 and split_slug[0] == "extrasensor":
+            split_slug = split_slug[1:]
+            if len(split_slug) > 1:
+                return "es_" + "".join([s[0] for s in split_slug[:-1]]) + split_slug[-1][:2]
+            return "es_" + split_slug[:3]
+        elif len(split_slug) > 1:
+            return self._slug[0] + split_slug[1][:2]
+        return self._slug[:3]
 
     @property
     def slug(self):
@@ -57,6 +70,7 @@ class CryptoInfoEntityManager:
         self._api_data = dict()
         self._fetch_frequency = dict()
         self._last_fetch = dict()
+        self._extra_sensor_types = list()
 
     @property
     def fetch_types(self):
@@ -90,7 +104,17 @@ class CryptoInfoEntityManager:
             CryptoInfoDataFetchType.CHAIN_SUMMARY,
         ]
 
+    def get_extra_sensor_fetch_type_from_str(self, attribute_key):
+        for t in self._extra_sensor_types:
+            if t == attribute_key:
+                return t
+        t = CryptoInfoFetchProp("extrasensor_" + attribute_key)
+        self._extra_sensor_types.append(t)
+        return t
+
     def get_fetch_type_from_str(self, fetch_type):
+        if isinstance(fetch_type, CryptoInfoFetchProp):
+            return fetch_type
         for t in self.fetch_types:
             if t == fetch_type:
                 return t
