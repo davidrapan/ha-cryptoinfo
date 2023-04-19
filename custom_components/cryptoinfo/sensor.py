@@ -237,81 +237,35 @@ class CryptoinfoSensor(Entity):
         return round(float(self._all_time_high) - self.state, 2)
 
     def get_extra_state_attrs(self, full_attr_force=False):
-        base_attrs = {
+        output_attrs = {
             ATTR_LAST_UPDATE: self._last_update,
         }
-        market_cap_attrs = {
-            ATTR_MARKET_CAP: self._market_cap,
-        }
-        simple_price_attrs = {
-            ATTR_BASE_PRICE: self._base_price,
-            ATTR_24H_VOLUME: self._24h_volume,
-            ATTR_24H_CHANGE: self._24h_change,
-        }
-        output_attrs = {
-            **base_attrs
-        }
-        while True:
-            if self.is_child_sensor or self._fetch_type == CryptoInfoDataFetchType.CHAIN_ORPHANS:
-                if not full_attr_force:
-                    break
-            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
-                output_attrs = {
-                    **output_attrs,
-                    ATTR_BLOCK_HEIGHT: self._block_height
-                }
-                if not full_attr_force:
-                    break
-            if self._fetch_type == CryptoInfoDataFetchType.DOMINANCE:
-                output_attrs = {
-                    **output_attrs,
-                    **market_cap_attrs
-                }
-                if not full_attr_force:
-                    break
-            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
-                output_attrs = {
-                    **output_attrs,
-                    ATTR_DIFFICULTY: self._difficulty,
-                    ATTR_HASHRATE: self._hashrate,
-                }
-                if not full_attr_force:
-                    output_attrs = {
-                        **output_attrs,
-                        ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
-                    }
-                    break
-            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
-                output_attrs = {
-                    **output_attrs,
-                    ATTR_POOL_CONTROL_1000B: self._pool_control_1000b,
-                }
-                if not full_attr_force:
-                    break
-            if self._fetch_type == CryptoInfoDataFetchType.PRICE_SIMPLE:
-                output_attrs = {
-                    **output_attrs,
-                    **market_cap_attrs,
-                    **simple_price_attrs
-                }
-                if not full_attr_force:
-                    break
-            output_attrs = {
-                **output_attrs,
-                **market_cap_attrs,
-                **simple_price_attrs,
-                ATTR_1H_CHANGE: self._1h_change,
-                ATTR_7D_CHANGE: self._7d_change,
-                ATTR_30D_CHANGE: self._30d_change,
-                ATTR_CIRCULATING_SUPPLY: self._circulating_supply,
-                ATTR_TOTAL_SUPPLY: self._total_supply,
-                ATTR_ALL_TIME_HIGH: self._all_time_high,
-                ATTR_ALL_TIME_LOW: self._all_time_low,
-                ATTR_24H_LOW: self._24h_low,
-                ATTR_24H_HIGH: self._24h_high,
-                ATTR_IMAGE_URL: self._image_url,
-            }
-            break
+        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_price_types:
+            output_attrs[ATTR_BASE_PRICE] = self._base_price
+            output_attrs[ATTR_24H_VOLUME] = self._24h_volume
+            output_attrs[ATTR_24H_CHANGE] = self._24h_change
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
+            output_attrs[ATTR_1H_CHANGE] = self._1h_change
+            output_attrs[ATTR_7D_CHANGE] = self._7d_change
+            output_attrs[ATTR_30D_CHANGE] = self._30d_change
+            output_attrs[ATTR_CIRCULATING_SUPPLY] = self._circulating_supply
+            output_attrs[ATTR_TOTAL_SUPPLY] = self._total_supply
+            output_attrs[ATTR_ALL_TIME_HIGH] = self._all_time_high
+            output_attrs[ATTR_ALL_TIME_LOW] = self._all_time_low
+            output_attrs[ATTR_24H_LOW] = self._24h_low
+            output_attrs[ATTR_24H_HIGH] = self._24h_high
+            output_attrs[ATTR_IMAGE_URL] = self._image_url
+        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_supply_types:
+            output_attrs[ATTR_CIRCULATING_SUPPLY] = self._circulating_supply
+        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_market_cap_types:
+            output_attrs[ATTR_MARKET_CAP] = self._market_cap
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
+            output_attrs[ATTR_BLOCK_HEIGHT] = self._block_height
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+            output_attrs[ATTR_DIFFICULTY] = self._difficulty
+            output_attrs[ATTR_HASHRATE] = self._hashrate
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+            output_attrs[ATTR_POOL_CONTROL_1000B] = self._pool_control_1000b
         return output_attrs
 
     @property
@@ -320,24 +274,12 @@ class CryptoinfoSensor(Entity):
 
     def get_extra_sensor_attrs(self, full_attr_force=False):
         output_attrs = self.get_extra_state_attrs(full_attr_force=full_attr_force)
-        while True:
-            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
-                output_attrs = {
-                    **output_attrs,
-                    ATTR_DIFFICULTY_BLOCK_PROGRESS: self.difficulty_block_progress,
-                    ATTR_DIFFICULTY_RETARGET_HEIGHT: self.difficulty_retarget_height,
-                    ATTR_HASHRATE_GH: self.hashrate_gh,
-                }
-                if not full_attr_force:
-                    break
-            if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
-                output_attrs = {
-                    **output_attrs,
-                    ATTR_ALL_TIME_HIGH_DISTANCE: self.all_time_high_distance,
-                }
-                if not full_attr_force:
-                    break
-            break
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+            output_attrs[ATTR_DIFFICULTY_BLOCK_PROGRESS] = self.difficulty_block_progress
+            output_attrs[ATTR_DIFFICULTY_RETARGET_HEIGHT] = self.difficulty_retarget_height
+            output_attrs[ATTR_HASHRATE_GH] = self.hashrate_gh
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
+            output_attrs[ATTR_ALL_TIME_HIGH_DISTANCE] = self.all_time_high_distance
         return output_attrs
 
     @property
@@ -384,19 +326,13 @@ class CryptoinfoSensor(Entity):
 
     def _build_unique_id(self):
         if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
-            return (
-                self.cryptocurrency_name
-                + str(self.multiplier)
-                + str(self._update_frequency)
-                + "_" + self._fetch_type.id_slug
+            return "{0}{1}{2}_{3}".format(
+                self.cryptocurrency_name, self.multiplier, self._update_frequency, self._fetch_type.id_slug,
             )
         else:
-            return (
-                self.cryptocurrency_name
-                + self.currency_name
-                + str(self.multiplier)
-                + str(self._update_frequency)
-            )
+            return "".join([
+                self.cryptocurrency_name, self.currency_name, self.multiplier, self._update_frequency
+            ])
 
     def _build_device_class(self):
         if self._fetch_type in CryptoInfoEntityManager.instance().fetch_price_types:
@@ -709,7 +645,6 @@ class CryptoinfoSensor(Entity):
 
     def get_child_data(self, attribute_key):
         child_data = self.extra_sensor_attributes.get(attribute_key)
-        print(f"data is {child_data}")
         return child_data
 
     def _update_child_sensors(self):

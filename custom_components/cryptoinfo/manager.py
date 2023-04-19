@@ -85,6 +85,21 @@ class CryptoInfoEntityManager:
         ]
 
     @property
+    def fetch_market_cap_types(self):
+        return [
+            CryptoInfoDataFetchType.PRICE_MAIN,
+            CryptoInfoDataFetchType.PRICE_SIMPLE,
+            CryptoInfoDataFetchType.DOMINANCE,
+        ]
+
+    @property
+    def fetch_supply_types(self):
+        return [
+            CryptoInfoDataFetchType.PRICE_MAIN,
+            CryptoInfoDataFetchType.CHAIN_SUMMARY,
+        ]
+
+    @property
     def fetch_price_types(self):
         return [
             CryptoInfoDataFetchType.PRICE_MAIN,
