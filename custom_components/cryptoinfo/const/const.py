@@ -1,14 +1,12 @@
 import logging
 
-CONF_ID = "id"
 CONF_CRYPTOCURRENCY_NAME = "cryptocurrency_name"
 CONF_CURRENCY_NAME = "currency_name"
 CONF_MULTIPLIER = "multiplier"
 CONF_UPDATE_FREQUENCY = "update_frequency"
-CONF_UNIT_OF_MEASUREMENT = "unit_of_measurement"
 CONF_API_MODE = "api_mode"
 CONF_POOL_PREFIX = "pool_prefix"
-CONF_FETCH_ARGS = "template_fetch_args"
+CONF_FETCH_ARGS = "fetch_args_template"
 CONF_EXTRA_SENSORS = "extra_sensors"
 CONF_EXTRA_SENSOR_PROPERTY = "property"
 CONF_API_DOMAIN_NAME = "api_domain_name"
