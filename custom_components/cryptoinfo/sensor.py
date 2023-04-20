@@ -49,16 +49,16 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     unique_id = config.get(CONF_UNIQUE_ID)
     state_class = config.get(CONF_STATE_CLASS)
     cryptocurrency_name = config.get(CONF_CRYPTOCURRENCY_NAME).lower().strip()
-    currency_name = config.get(CONF_CURRENCY_NAME).strip()
+    currency_name = config.get(CONF_CURRENCY_NAME).lower().strip()
     unit_of_measurement = config.get(CONF_UNIT_OF_MEASUREMENT).strip()
     multiplier = config.get(CONF_MULTIPLIER).strip()
     update_frequency = timedelta(minutes=(float(config.get(CONF_UPDATE_FREQUENCY))))
-    api_mode = config.get(CONF_API_MODE)
-    pool_prefix = config.get(CONF_POOL_PREFIX)
+    api_mode = config.get(CONF_API_MODE).lower().strip()
+    pool_prefix = config.get(CONF_POOL_PREFIX).strip()
     fetch_args = config.get(CONF_FETCH_ARGS)
     extra_sensors = config.get(CONF_EXTRA_SENSORS, [])
-    api_domain_name = config.get(CONF_API_DOMAIN_NAME)
-    pool_name = config.get(CONF_POOL_NAME)
+    api_domain_name = config.get(CONF_API_DOMAIN_NAME).lower().strip()
+    pool_name = config.get(CONF_POOL_NAME).strip()
     diff_multiplier = config.get(CONF_DIFF_MULTIPLIER)
     block_time_minutes = config.get(CONF_BLOCK_TIME_MINUTES)
     difficulty_window = config.get(CONF_DIFFICULTY_WINDOW)
@@ -116,12 +116,16 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_EXTRA_SENSORS): vol.All(
             cv.ensure_list,
             [
-                {
-                    vol.Optional(CONF_EXTRA_SENSOR_PROPERTY): vol.In(CryptoinfoSensor.get_valid_extra_sensor_keys()),
-                    vol.Optional(CONF_UNIT_OF_MEASUREMENT, default="$"): cv.string,
-                }
+                vol.Schema(
+                    {
+                        vol.Optional(CONF_ID, default=""): cv.string,
+                        vol.Optional(CONF_UNIQUE_ID): cv.string,
+                        vol.Optional(CONF_STATE_CLASS): STATE_CLASSES_SCHEMA,
+                        vol.Required(CONF_EXTRA_SENSOR_PROPERTY): vol.In(CryptoinfoSensor.get_valid_extra_sensor_keys()),
+                        vol.Optional(CONF_UNIT_OF_MEASUREMENT, default="$"): cv.string,
+                    }
+                )
             ],
-            vol.Unique(),
         ),
         vol.Optional(CONF_API_DOMAIN_NAME, default=""): cv.string,
         vol.Optional(CONF_POOL_NAME, default=""): cv.string,

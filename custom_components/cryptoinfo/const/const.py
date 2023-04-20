@@ -37,6 +37,7 @@ ATTR_DIFFICULTY = "difficulty"
 ATTR_HASHRATE = "hashrate"
 ATTR_HASHRATE_CALC = "hashrate_calc"
 ATTR_POOL_CONTROL_1000B = "pool_control_1000b"
+ATTR_POOL_CONTROL_1000B_PERC = "pool_control_1000b_perc"
 ATTR_BLOCK_HEIGHT = "block_height"
 
 ATTR_DIFFICULTY_BLOCK_PROGRESS = "difficulty_block_progress"

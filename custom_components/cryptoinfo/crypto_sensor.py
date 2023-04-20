@@ -33,6 +33,7 @@ from .const.const import (
     ATTR_HASHRATE,
     ATTR_HASHRATE_CALC,
     ATTR_POOL_CONTROL_1000B,
+    ATTR_POOL_CONTROL_1000B_PERC,
     ATTR_BLOCK_HEIGHT,
     ATTR_DIFFICULTY_BLOCK_PROGRESS,
     ATTR_DIFFICULTY_RETARGET_HEIGHT,
@@ -64,10 +65,13 @@ from .const.const import (
 from .manager import CryptoInfoEntityManager, CryptoInfoDataFetchType
 
 from homeassistant.components.sensor import (
+    CONF_STATE_CLASS,
     SensorDeviceClass,
     SensorStateClass,
 )
 from homeassistant.const import (
+    CONF_ID,
+    CONF_UNIQUE_ID,
     CONF_UNIT_OF_MEASUREMENT,
 )
 from homeassistant.exceptions import TemplateError
@@ -110,7 +114,7 @@ class CryptoinfoSensor(Entity):
         self._block_time_minutes = float(block_time_minutes) if block_time_minutes.replace(
             ".", "", 1).isdigit() else DEFAULT_CHAIN_BLOCK_TIME_MINS
         self._difficulty_window = int(difficulty_window) if difficulty_window.isdigit() else DEFAULT_CHAIN_DIFFICULTY_WINDOW
-        self._internal_id_name = id_name
+        self._internal_id_name = id_name if id_name is not None else ""
         self._fetch_type = CryptoInfoEntityManager.instance().get_fetch_type_from_str(api_mode)
         self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
         self._api_domain_name = api_domain_name if api_domain_name and len(api_domain_name) else None
@@ -129,7 +133,6 @@ class CryptoinfoSensor(Entity):
         self._icon = "mdi:bitcoin"
         self._attr_device_class = self._build_device_class()
         self._attr_state_class = state_class or SensorStateClass.MEASUREMENT
-        self._state_class = "measurement"
         self._attr_available = True
         self._unit_of_measurement = unit_of_measurement
 
@@ -192,7 +195,7 @@ class CryptoinfoSensor(Entity):
 
     @property
     def state_class(self):
-        return self._state_class
+        return self._attr_state_class
 
     @property
     def unit_of_measurement(self):
@@ -301,6 +304,13 @@ class CryptoinfoSensor(Entity):
 
         return round(float(self._all_time_high) - self.state, 2)
 
+    @property
+    def pool_control_1000b_perc(self):
+        if self._pool_control_1000b is None:
+            return None
+
+        return round(((float(self._pool_control_1000b) / 1000.0) * 100.0), 4)
+
     def get_extra_state_attrs(self, full_attr_force=False):
         output_attrs = {
             ATTR_LAST_UPDATE: self._last_update,
@@ -375,6 +385,8 @@ class CryptoinfoSensor(Entity):
             if child_sensor is None or child_sensor.attribute_key == ATTR_DIFFICULTY_RETARGET_ESTIMATED_DIFF:
                 output_attrs[ATTR_DIFFICULTY_RETARGET_ESTIMATED_DIFF] = self.difficulty_retarget_estimated_diff
 
+        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_hashrate_types:
+
             if child_sensor is None or child_sensor.attribute_key == ATTR_HASHRATE_CALC:
                 output_attrs[ATTR_HASHRATE_CALC] = self.hashrate_calc(
                     child_sensor.unit_of_measurement if child_sensor is not None else None
@@ -384,6 +396,11 @@ class CryptoinfoSensor(Entity):
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_ALL_TIME_HIGH_DISTANCE:
                 output_attrs[ATTR_ALL_TIME_HIGH_DISTANCE] = self.all_time_high_distance
+
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_POOL_CONTROL_1000B_PERC:
+                output_attrs[ATTR_POOL_CONTROL_1000B_PERC] = self.pool_control_1000b_perc
 
         return output_attrs
 
@@ -476,7 +493,7 @@ class CryptoinfoSensor(Entity):
 
     def _log_api_error(self, error, r, tb):
         _LOGGER.error(
-            "Cryptoingo error fetching update: "
+            "Cryptoinfo error fetching update: "
             + f"{type(error).__name__}: {error}"
             + " - response status: "
             + str(r.status_code if r is not None else None)
@@ -489,6 +506,7 @@ class CryptoinfoSensor(Entity):
         r = None
         try:
             if api_data is None:
+                _LOGGER.warning(f"Fetching data for {self.name}")
                 r = requests.get(url=url)
                 api_data = extract_data(r.json())
 
@@ -527,14 +545,20 @@ class CryptoinfoSensor(Entity):
         return json_data
 
     def _extract_data_chain_control_primary(self, api_data):
-        return api_data["nb100"]
+        return True
 
-    def _extract_data_chain_control_full(self, json_data):
+    def _extract_data_chain_control_special(self, json_data):
         for pool in json_data["pools"]:
             if pool["name"].startswith(self.pool_prefix):
                 return pool
 
-        raise ValueError("Pool Prefix not found")
+        return None
+
+    def _extract_data_chain_control_full(self, json_data):
+        if self._extract_data_chain_control_special(json_data) is None:
+            raise ValueError(f"Pool Prefix {self.pool_prefix} not found")
+
+        return json_data
 
     def _extract_data_chain_orphans_primary(self, api_data):
         orphans_start_timestamp = api_data["d"] * DAY_SECONDS
@@ -677,9 +701,10 @@ class CryptoinfoSensor(Entity):
         )
 
         if control_data is not None:
+            pool_data = self._extract_data_chain_control_special(api_data)
             self._update_all_properties(
-                state=int(control_data),
-                pool_control_1000b=api_data["nb1000"],
+                state=int(pool_data["nb100"]),
+                pool_control_1000b=pool_data["nb1000"],
             )
 
         else:
@@ -901,11 +926,17 @@ class CryptoinfoSensor(Entity):
         ])
 
         for conf in valid_child_conf:
-            attribute_key = conf[CONF_EXTRA_SENSOR_PROPERTY]
-            unit_of_measurement = conf[CONF_UNIT_OF_MEASUREMENT]
+            id_name = conf.get(CONF_ID)
+            unique_id = conf.get(CONF_UNIQUE_ID)
+            state_class = conf.get(CONF_STATE_CLASS)
+            attribute_key = conf.get(CONF_EXTRA_SENSOR_PROPERTY)
+            unit_of_measurement = conf.get(CONF_UNIT_OF_MEASUREMENT)
             child_sensors.append(
                 CryptoinfoChildSensor(
                     self,
+                    id_name,
+                    unique_id,
+                    state_class,
                     attribute_key,
                     unit_of_measurement,
                 )
@@ -957,27 +988,30 @@ class CryptoinfoChildSensor(CryptoinfoSensor):
     def __init__(
         self,
         parent_sensor,
+        id_name,
+        unique_id,
+        state_class,
         attribute_key,
         unit_of_measurement,
         *args,
         **kwargs
     ):
         super().__init__(
-            parent_sensor.hass,
-            parent_sensor.cryptocurrency_name,
-            parent_sensor.currency_name,
-            unit_of_measurement,
-            parent_sensor.multiplier,
-            parent_sensor._update_frequency,
-            "",
-            None,
-            None,
-            CryptoInfoEntityManager.instance().get_extra_sensor_fetch_type_from_str(attribute_key),
-            parent_sensor.pool_prefix,
-            parent_sensor._fetch_args,
-            None,
-            None,
-            parent_sensor._pool_name,
+            hass=parent_sensor.hass,
+            cryptocurrency_name=parent_sensor.cryptocurrency_name,
+            currency_name=parent_sensor.currency_name,
+            unit_of_measurement=unit_of_measurement,
+            multiplier=parent_sensor.multiplier,
+            update_frequency=parent_sensor._update_frequency,
+            id_name=id_name,
+            unique_id=unique_id,
+            state_class=state_class,
+            api_mode=CryptoInfoEntityManager.instance().get_extra_sensor_fetch_type_from_str(parent_sensor, attribute_key),
+            pool_prefix=parent_sensor.pool_prefix,
+            fetch_args=parent_sensor._fetch_args,
+            extra_sensors="",
+            api_domain_name="",
+            pool_name=parent_sensor._pool_name,
             is_child_sensor=True,
         )
 
@@ -991,5 +1025,8 @@ class CryptoinfoChildSensor(CryptoinfoSensor):
     def _update(self):
         new_state = self._parent_sensor.get_child_data(self)
 
-        if new_state != self._state:
+        if new_state is not None and new_state != self._state:
             self._update_all_properties(state=new_state)
+
+        elif new_state is None:
+            self._update_all_properties(available=False)

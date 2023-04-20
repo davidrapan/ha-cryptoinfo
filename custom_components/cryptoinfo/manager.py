@@ -2,24 +2,24 @@ import time
 
 
 class CryptoInfoFetchProp:
-    def __init__(self, slug):
+    def __init__(self, slug, parent_sensor=None):
         self._slug = slug
-        self._name = self._build_name()
-        self._id_slug = self._build_id_slug()
+        self._name = self._build_name(parent_sensor)
+        self._id_slug = self._build_id_slug(parent_sensor)
 
-    def _build_name(self):
-        return self._slug.replace("extrasensor_", "").replace("_", " ").title()
+    def _build_name(self, parent_sensor):
+        return self._slug.replace("_", " ").title()
 
-    def _build_id_slug(self):
+    def _build_id_slug(self, parent_sensor):
         split_slug = self._slug.split("_")
 
-        if len(split_slug) > 1 and split_slug[0] == "extrasensor":
-            split_slug = split_slug[1:]
+        if parent_sensor is not None:
+            id_prefix = parent_sensor.fetch_type.child_id_prefix
 
             if len(split_slug) > 1:
-                return "es_" + "".join([s[0] for s in split_slug[:-1]]) + split_slug[-1][:2]
+                return id_prefix + "".join([s[0] for s in split_slug[:-1]]) + split_slug[-1][:2]
 
-            return "es_" + split_slug[:3]
+            return id_prefix + split_slug[:3]
 
         elif len(split_slug) > 1:
             return self._slug[0] + split_slug[1][:2]
@@ -29,6 +29,12 @@ class CryptoInfoFetchProp:
     @property
     def slug(self):
         return self._slug
+
+    @property
+    def child_id_prefix(self):
+        slug_split = self.slug.split("_")
+        slug_abb = "".join([s[0] for s in slug_split])
+        return f"es_{slug_abb}_"
 
     @property
     def id_slug(self):
@@ -142,14 +148,15 @@ class CryptoInfoEntityManager:
         return [
             CryptoInfoDataFetchType.DOMINANCE,
             CryptoInfoDataFetchType.CHAIN_SUMMARY,
+            CryptoInfoDataFetchType.CHAIN_CONTROL,
         ]
 
-    def get_extra_sensor_fetch_type_from_str(self, attribute_key):
+    def get_extra_sensor_fetch_type_from_str(self, parent_sensor, attribute_key):
         for t in self._extra_sensor_types:
             if t == attribute_key:
                 return t
 
-        t = CryptoInfoFetchProp("extrasensor_" + attribute_key)
+        t = CryptoInfoFetchProp(attribute_key, parent_sensor=parent_sensor)
         self._extra_sensor_types.append(t)
         return t
 
@@ -174,10 +181,13 @@ class CryptoInfoEntityManager:
 
             if not entity.is_child_sensor:
                 self._entities[entity.unique_id] = entity
-                current_frequency = self._fetch_frequency.get(entity.fetch_type)
+
+                entity_data_key = self.get_entity_data_key(entity)
+
+                current_frequency = self._fetch_frequency.get(entity_data_key)
 
                 if current_frequency is None or entity.update_frequency < current_frequency:
-                    self._fetch_frequency[entity.fetch_type] = entity.update_frequency
+                    self._fetch_frequency[entity_data_key] = entity.update_frequency
 
                 if entity.fetch_type in self.fetch_hashrate_types:
                     if entity.cryptocurrency_name not in self._hashrate_sources:
@@ -244,24 +254,35 @@ class CryptoInfoEntityManager:
         if entity.fetch_type not in self.fetch_shared_types:
             return True
 
-        if entity.fetch_type not in self._api_data:
+        entity_data_key = self.get_entity_data_key(entity)
+
+        if entity_data_key not in self._api_data:
             return True
 
-        if self._api_data[entity.fetch_type] is None:
+        if self._api_data[entity_data_key] is None:
             return True
 
-        last_fetch = self.get_last_fetch(entity.fetch_type)
-        if last_fetch + self.get_fetch_frequency(entity.fetch_type) < int(time.time()):
+        last_fetch = self.get_last_fetch(entity_data_key)
+        if last_fetch + self.get_fetch_frequency(entity_data_key) < int(time.time()):
             return True
 
         return False
+
+    def get_entity_data_key(self, entity):
+        if entity.fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+            return f"{entity.fetch_type}_{entity.cryptocurrency_name}"
+        else:
+            return f"{entity.fetch_type}"
 
     def set_cached_entity_data(self, entity, data):
         if entity.fetch_type not in self.fetch_shared_types:
             return
 
-        self._api_data[entity.fetch_type] = data
-        self._last_fetch[entity.fetch_type] = int(time.time())
+        entity_data_key = self.get_entity_data_key(entity)
+
+        self._api_data[entity_data_key] = data
+        self._last_fetch[entity_data_key] = int(time.time())
 
     def fetch_cached_entity_data(self, entity):
-        return self._api_data[entity.fetch_type]
+        entity_data_key = self.get_entity_data_key(entity)
+        return self._api_data[entity_data_key]
