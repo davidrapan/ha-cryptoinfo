@@ -1,14 +1,19 @@
 import logging
 
-CONF_ID = "id"
 CONF_CRYPTOCURRENCY_NAME = "cryptocurrency_name"
 CONF_CURRENCY_NAME = "currency_name"
 CONF_MULTIPLIER = "multiplier"
 CONF_UPDATE_FREQUENCY = "update_frequency"
-CONF_UNIT_OF_MEASUREMENT = "unit_of_measurement"
 CONF_API_MODE = "api_mode"
 CONF_POOL_PREFIX = "pool_prefix"
-CONF_FETCH_ARGS = "template_fetch_args"
+CONF_FETCH_ARGS = "fetch_args_template"
+CONF_EXTRA_SENSORS = "extra_sensors"
+CONF_EXTRA_SENSOR_PROPERTY = "property"
+CONF_API_DOMAIN_NAME = "api_domain_name"
+CONF_POOL_NAME = "pool_name"
+CONF_DIFF_MULTIPLIER = "diff_multiplier"
+CONF_BLOCK_TIME_MINUTES = "block_time_minutes"
+CONF_DIFFICULTY_WINDOW = "difficulty_window"
 
 SENSOR_PREFIX = "Cryptoinfo "
 ATTR_LAST_UPDATE = "last_update"
@@ -22,17 +27,36 @@ ATTR_MARKET_CAP = "market_cap"
 ATTR_CIRCULATING_SUPPLY = "circulating_supply"
 ATTR_TOTAL_SUPPLY = "total_supply"
 ATTR_ALL_TIME_HIGH = "all_time_high"
+ATTR_ALL_TIME_HIGH_DISTANCE = "all_time_high_distance"
 ATTR_ALL_TIME_LOW = "all_time_low"
 ATTR_24H_LOW = "24h_low"
 ATTR_24H_HIGH = "24h_high"
 ATTR_IMAGE_URL = "image_url"
+
 ATTR_DIFFICULTY = "difficulty"
 ATTR_HASHRATE = "hashrate"
+ATTR_HASHRATE_CALC = "hashrate_calc"
 ATTR_POOL_CONTROL_1000B = "pool_control_1000b"
+ATTR_POOL_CONTROL_1000B_PERC = "pool_control_1000b_perc"
 ATTR_BLOCK_HEIGHT = "block_height"
+
+ATTR_DIFFICULTY_BLOCK_PROGRESS = "difficulty_block_progress"
+ATTR_DIFFICULTY_RETARGET_HEIGHT = "difficulty_retarget_height"
+ATTR_DIFFICULTY_RETARGET_SECONDS = "difficulty_retarget_seconds"
+ATTR_DIFFICULTY_RETARGET_PERCENT_CHANGE = "difficulty_retarget_percent_change"
+ATTR_DIFFICULTY_RETARGET_ESTIMATED_DIFF = "difficulty_retarget_estimated_diff"
+
+ATTR_WORKER_COUNT = "worker_count"
+ATTR_LAST_BLOCK = "last_block"
+ATTR_BLOCKS_PENDING = "blocks_pending"
+ATTR_BLOCKS_CONFIRMED = "blocks_confirmed"
+ATTR_BLOCKS_ORPHANED = "blocks_orphaned"
+
+ATTR_BLOCK_TIME_IN_SECONDS = "block_time_in_seconds"
 
 API_BASE_URL_COINGECKO = "https://api.coingecko.com/api/v3/"
 API_BASE_URL_CRYPTOID = "https://chainz.cryptoid.info/"
+
 API_ENDPOINT_PRICE_MAIN = (
     "{0}coins/markets?ids={1}&vs_currency={2}"
     "&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d%2C30d"
@@ -46,7 +70,13 @@ API_ENDPOINT_CHAIN_SUMMARY = "{0}explorer/api.dws?q=summary"
 API_ENDPOINT_CHAIN_ORPHANS = "{0}explorer/index.orphans.dws?coin={1}"
 API_ENDPOINT_CHAIN_CONTROL = "{0}explorer/index.pools.dws?coin={1}"
 API_ENDPOINT_CHAIN_BLOCK_TIME = "{0}{1}/api.dws?q=getblocktime&height={2}"
+API_ENDPOINT_NOMP_POOL_STATS = "https://{0}/api/stats"
 
 DAY_SECONDS = 60 * 60 * 24
+
+BLOCKCHAIN_DIFFICULTY_WINDOW = 2016
+DEFAULT_CHAIN_DIFFICULTY_WINDOW = 2016
+DEFAULT_CHAIN_DIFF_MULTIPLIER = 4294967296
+DEFAULT_CHAIN_BLOCK_TIME_MINS = 10.0
 
 _LOGGER = logging.getLogger(__name__)
