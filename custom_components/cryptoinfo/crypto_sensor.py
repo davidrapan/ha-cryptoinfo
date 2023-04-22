@@ -451,8 +451,12 @@ class CryptoinfoSensor(Entity):
 
     def _build_unique_id(self):
         if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
+            if self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+                id_slug = f"{self._fetch_type.id_slug}_{self.pool_prefix}"
+            else:
+                id_slug = f"{self._fetch_type.id_slug}"
             return "{0}{1}{2}_{3}".format(
-                self.cryptocurrency_name, self.multiplier, self._update_frequency, self._fetch_type.id_slug,
+                self.cryptocurrency_name, self.multiplier, self._update_frequency, id_slug,
             )
 
         else:
