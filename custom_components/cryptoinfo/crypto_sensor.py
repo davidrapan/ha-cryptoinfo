@@ -537,7 +537,7 @@ class CryptoinfoSensor(Entity):
         return json_data[self.cryptocurrency_name]
 
     def _extract_data_dominance_primary(self, api_data):
-        return api_data["market_cap_percentage"][self.cryptocurrency_name]
+        return float(api_data["market_cap_percentage"][self.cryptocurrency_name])
 
     def _extract_data_dominance_full(self, json_data):
         return json_data["data"]
@@ -666,7 +666,7 @@ class CryptoinfoSensor(Entity):
 
         if dominance_data is not None:
             self._update_all_properties(
-                state=float(dominance_data),
+                state=round(dominance_data, 1),
                 market_cap=api_data["total_market_cap"][self.cryptocurrency_name]
             )
 
