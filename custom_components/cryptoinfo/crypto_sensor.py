@@ -562,7 +562,7 @@ class CryptoinfoSensor(Entity):
         for pool_prefix in self.pool_prefixes:
             if pool_prefix is not None and len(pool_prefix):
                 for pool in json_data["pools"]:
-                    if pool["name"].startswith(pool_prefix):
+                    if pool["name"].lower().startswith(pool_prefix.lower()):
                         pool_data = pool
                         data_100_blk += pool["nb100"]
                         data_1000_blk += pool["nb1000"]
