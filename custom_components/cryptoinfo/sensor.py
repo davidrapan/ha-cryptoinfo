@@ -54,7 +54,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     multiplier = config.get(CONF_MULTIPLIER).strip()
     update_frequency = timedelta(minutes=(float(config.get(CONF_UPDATE_FREQUENCY))))
     api_mode = config.get(CONF_API_MODE).lower().strip()
-    pool_prefix = config.get(CONF_POOL_PREFIX).strip()
+    pool_prefix = config.get(CONF_POOL_PREFIX)
     fetch_args = config.get(CONF_FETCH_ARGS)
     extra_sensors = config.get(CONF_EXTRA_SENSORS, [])
     api_domain_name = config.get(CONF_API_DOMAIN_NAME).lower().strip()
@@ -111,7 +111,10 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             CONF_API_MODE,
             default=str(CryptoInfoDataFetchType.PRICE_MAIN)
         ): vol.In(CryptoInfoEntityManager.instance().fetch_types),
-        vol.Optional(CONF_POOL_PREFIX, default=""): cv.string,
+        vol.Optional(CONF_POOL_PREFIX, default=[""]): vol.All(
+            cv.ensure_list,
+            [cv.string],
+        ),
         vol.Optional(CONF_FETCH_ARGS, default=""): cv.string,
         vol.Optional(CONF_EXTRA_SENSORS): vol.All(
             cv.ensure_list,

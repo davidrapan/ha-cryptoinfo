@@ -93,7 +93,7 @@ class CryptoinfoSensor(Entity):
         unique_id=None,
         state_class=None,
         api_mode="",
-        pool_prefix="",
+        pool_prefix=[""],
         fetch_args="",
         extra_sensors="",
         api_domain_name="",
@@ -108,7 +108,7 @@ class CryptoinfoSensor(Entity):
         self.data = None
         self.cryptocurrency_name = cryptocurrency_name
         self.currency_name = currency_name
-        self.pool_prefix = pool_prefix
+        self.pool_prefixes = pool_prefix if isinstance(pool_prefix, list) else [pool_prefix]
         self.multiplier = multiplier
         self._diff_multiplier = int(diff_multiplier) if diff_multiplier.isdigit() else DEFAULT_CHAIN_DIFF_MULTIPLIER
         self._block_time_minutes = float(block_time_minutes) if block_time_minutes.replace(
@@ -449,10 +449,14 @@ class CryptoinfoSensor(Entity):
                 + self.currency_name
             )
 
+    @property
+    def pool_prefix_id(self):
+        return "".join(self.pool_prefixes)
+
     def _build_unique_id(self):
         if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
             if self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
-                id_slug = f"{self._fetch_type.id_slug}_{self.pool_prefix}"
+                id_slug = f"{self._fetch_type.id_slug}_{self.pool_prefix_id}"
             else:
                 id_slug = f"{self._fetch_type.id_slug}"
             return "{0}{1}{2}_{3}".format(
@@ -552,15 +556,29 @@ class CryptoinfoSensor(Entity):
         return True
 
     def _extract_data_chain_control_special(self, json_data):
-        for pool in json_data["pools"]:
-            if pool["name"].startswith(self.pool_prefix):
-                return pool
+        pool_data = None
+        data_100_blk = 0
+        data_1000_blk = 0
+        for pool_prefix in self.pool_prefixes:
+            if pool_prefix is not None and len(pool_prefix):
+                for pool in json_data["pools"]:
+                    if pool["name"].startswith(pool_prefix):
+                        pool_data = pool
+                        data_100_blk += pool["nb100"]
+                        data_1000_blk += pool["nb1000"]
+
+        if pool_data is not None:
+            return {
+                **pool_data,
+                "nb100": data_100_blk,
+                "nb1000": data_1000_blk,
+            }
 
         return None
 
     def _extract_data_chain_control_full(self, json_data):
         if self._extract_data_chain_control_special(json_data) is None:
-            raise ValueError(f"Pool Prefix {self.pool_prefix} not found")
+            raise ValueError(f"Pool Prefixes {self.pool_prefixes} not found")
 
         return json_data
 
@@ -1011,7 +1029,7 @@ class CryptoinfoChildSensor(CryptoinfoSensor):
             unique_id=unique_id,
             state_class=state_class,
             api_mode=CryptoInfoEntityManager.instance().get_extra_sensor_fetch_type_from_str(parent_sensor, attribute_key),
-            pool_prefix=parent_sensor.pool_prefix,
+            pool_prefix=parent_sensor.pool_prefixes,
             fetch_args=parent_sensor._fetch_args,
             extra_sensors="",
             api_domain_name="",
