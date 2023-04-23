@@ -21,3 +21,4 @@ Version: 0.1.9 20230403 - Add more properties to main price fetch
 Version: 0.1.10 20230412 - Big refactor to reduce shared API usage, add cryptoid
 Version: 0.2.0 20230422 - Huge refactor to add sub sensors and loads more chain calculations.
 Version: 0.2.1 20230422 - Fix pool control unique IDs
+Version: 0.2.2 20230423 - Allow list of pool prefixes for chain control sensor
