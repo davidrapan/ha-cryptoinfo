@@ -54,8 +54,12 @@ ATTR_BLOCKS_ORPHANED = "blocks_orphaned"
 
 ATTR_BLOCK_TIME_IN_SECONDS = "block_time_in_seconds"
 
+ATTR_MEMPOOL_TX_COUNT = "mempool_tx_count"
+ATTR_MEMPOOL_TOTAL_FEE = "mempool_total_fee"
+
 API_BASE_URL_COINGECKO = "https://api.coingecko.com/api/v3/"
 API_BASE_URL_CRYPTOID = "https://chainz.cryptoid.info/"
+API_BASE_URL_MEMPOOLSPACE = "https://mempool.space/api/"
 
 API_ENDPOINT_PRICE_MAIN = (
     "{0}coins/markets?ids={1}&vs_currency={2}"
@@ -71,6 +75,7 @@ API_ENDPOINT_CHAIN_ORPHANS = "{0}explorer/index.orphans.dws?coin={1}"
 API_ENDPOINT_CHAIN_CONTROL = "{0}explorer/index.pools.dws?coin={1}"
 API_ENDPOINT_CHAIN_BLOCK_TIME = "{0}{1}/api.dws?q=getblocktime&height={2}"
 API_ENDPOINT_NOMP_POOL_STATS = "https://{0}/api/stats"
+API_ENDPOINT_MEMPOOL_STATS = "{0}mempool"
 
 DAY_SECONDS = 60 * 60 * 24
 

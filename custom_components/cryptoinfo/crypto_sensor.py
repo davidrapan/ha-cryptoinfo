@@ -46,8 +46,11 @@ from .const.const import (
     ATTR_BLOCKS_CONFIRMED,
     ATTR_BLOCKS_ORPHANED,
     ATTR_BLOCK_TIME_IN_SECONDS,
+    ATTR_MEMPOOL_TX_COUNT,
+    ATTR_MEMPOOL_TOTAL_FEE,
     API_BASE_URL_COINGECKO,
     API_BASE_URL_CRYPTOID,
+    API_BASE_URL_MEMPOOLSPACE,
     API_ENDPOINT_PRICE_MAIN,
     API_ENDPOINT_PRICE_ALT,
     API_ENDPOINT_DOMINANCE,
@@ -56,6 +59,7 @@ from .const.const import (
     API_ENDPOINT_CHAIN_ORPHANS,
     API_ENDPOINT_CHAIN_BLOCK_TIME,
     API_ENDPOINT_NOMP_POOL_STATS,
+    API_ENDPOINT_MEMPOOL_STATS,
     DEFAULT_CHAIN_DIFFICULTY_WINDOW,
     DEFAULT_CHAIN_DIFF_MULTIPLIER,
     DEFAULT_CHAIN_BLOCK_TIME_MINS,
@@ -160,6 +164,8 @@ class CryptoinfoSensor(Entity):
         self._blocks_pending = None
         self._blocks_confirmed = None
         self._blocks_orphaned = None
+        self._mempool_tx_count = None
+        self._mempool_total_fee = None
 
     @property
     def is_child_sensor(self):
@@ -356,6 +362,10 @@ class CryptoinfoSensor(Entity):
             output_attrs[ATTR_BLOCKS_CONFIRMED] = self._blocks_confirmed
             output_attrs[ATTR_BLOCKS_ORPHANED] = self._blocks_orphaned
 
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
+            output_attrs[ATTR_MEMPOOL_TX_COUNT] = self._mempool_tx_count
+            output_attrs[ATTR_MEMPOOL_TOTAL_FEE] = self._mempool_total_fee
+
         return output_attrs
 
     @property
@@ -497,6 +507,16 @@ class CryptoinfoSensor(Entity):
 
                 return False
 
+        if self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
+
+            if self.cryptocurrency_name.lower() not in ['btc', 'bitcoin']:
+                _LOGGER.error(f"Sensor {self.name} is not BTC, mempool is only supported for BTC.")
+
+                if raise_error:
+                    raise ValueError()
+
+                return False
+
         return True
 
     def _log_api_error(self, error, r, tb):
@@ -615,6 +635,12 @@ class CryptoinfoSensor(Entity):
 
     def _extract_data_nomp_pool_stats_primary(self, api_data):
         return float(api_data["hashrate"])
+
+    def _extract_data_mempool_stats_full(self, json_data):
+        return json_data
+
+    def _extract_data_mempool_stats_primary(self, api_data):
+        return int(api_data["vsize"])
 
     def _fetch_price_data_main(self, api_data=None):
         if not self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
@@ -816,6 +842,28 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
+    def _fetch_mempool_stats(self, api_data=None):
+        self.check_valid_config()
+
+        mempool_data, api_data = self._api_fetch(
+            api_data,
+            API_ENDPOINT_MEMPOOL_STATS.format(API_BASE_URL_MEMPOOLSPACE),
+            self._extract_data_mempool_stats_full,
+            self._extract_data_mempool_stats_primary
+        )
+
+        if mempool_data is not None:
+            self._update_all_properties(
+                state=int(mempool_data),
+                mempool_tx_count=int(api_data["count"]),
+                mempool_total_fee=int(api_data["total_fee"]),
+            )
+
+        else:
+            raise ValueError()
+
+        return self.data
+
     def _render_fetch_args(self):
         if self._fetch_args is None:
             return None
@@ -892,6 +940,8 @@ class CryptoinfoSensor(Entity):
         blocks_pending=None,
         blocks_confirmed=None,
         blocks_orphaned=None,
+        mempool_tx_count=None,
+        mempool_total_fee=None,
         available=True,
     ):
         self._state = state
@@ -918,6 +968,8 @@ class CryptoinfoSensor(Entity):
         self._blocks_pending = blocks_pending
         self._blocks_confirmed = blocks_confirmed
         self._blocks_orphaned = blocks_orphaned
+        self._mempool_tx_count = mempool_tx_count
+        self._mempool_total_fee = mempool_total_fee
         self._attr_available = available
 
         self._update_child_sensors()
@@ -992,6 +1044,9 @@ class CryptoinfoSensor(Entity):
 
             elif self._fetch_type == CryptoInfoDataFetchType.NOMP_POOL_STATS:
                 api_data = self._fetch_nomp_pool_stats(api_data)
+
+            elif self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
+                api_data = self._fetch_mempool_stats(api_data)
 
             else:
                 api_data = self._fetch_price_data_main(api_data)

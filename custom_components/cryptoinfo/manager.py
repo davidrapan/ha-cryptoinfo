@@ -72,6 +72,7 @@ class CryptoInfoDataFetchType:
     CHAIN_ORPHANS = CryptoInfoFetchProp("chain_orphans")
     CHAIN_BLOCK_TIME = CryptoInfoFetchProp("chain_block_time")
     NOMP_POOL_STATS = CryptoInfoFetchProp("nomp_pool_stats")
+    MEMPOOL_STATS = CryptoInfoFetchProp("mempool_stats")
 
 
 class CryptoInfoEntityManager:
@@ -99,6 +100,7 @@ class CryptoInfoEntityManager:
             CryptoInfoDataFetchType.CHAIN_ORPHANS,
             CryptoInfoDataFetchType.CHAIN_BLOCK_TIME,
             CryptoInfoDataFetchType.NOMP_POOL_STATS,
+            CryptoInfoDataFetchType.MEMPOOL_STATS,
         ]
 
     @property
