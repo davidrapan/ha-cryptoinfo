@@ -30,6 +30,7 @@ from .const.const import (
     ATTR_24H_HIGH,
     ATTR_IMAGE_URL,
     ATTR_DIFFICULTY,
+    ATTR_DIFFICULTY_CALC,
     ATTR_HASHRATE,
     ATTR_HASHRATE_CALC,
     ATTR_POOL_CONTROL_1000B,
@@ -48,6 +49,7 @@ from .const.const import (
     ATTR_BLOCK_TIME_IN_SECONDS,
     ATTR_MEMPOOL_TX_COUNT,
     ATTR_MEMPOOL_TOTAL_FEE,
+    ATTR_MEMPOOL_SIZE_CALC,
     API_BASE_URL_COINGECKO,
     API_BASE_URL_CRYPTOID,
     API_BASE_URL_MEMPOOLSPACE,
@@ -67,6 +69,7 @@ from .const.const import (
 )
 
 from .manager import CryptoInfoEntityManager, CryptoInfoDataFetchType
+from .utils import unit_to_multiplier
 
 from homeassistant.components.sensor import (
     CONF_STATE_CLASS,
@@ -272,36 +275,23 @@ class CryptoinfoSensor(Entity):
             return None
         return round((self._difficulty * (1 + (self.difficulty_retarget_percent_change / 100))), 2)
 
-    def hashrate_multiplier(self, unit_of_measurement):
-        uom = unit_of_measurement.lower() if unit_of_measurement is not None else ""
-        if uom.startswith("k"):
-            return 1e3
-        elif uom.startswith("m"):
-            return 1e6
-        elif uom.startswith("g"):
-            return 1e9
-        elif uom.startswith("t"):
-            return 1e12
-        elif uom.startswith("p"):
-            return 1e15
-        elif uom.startswith("e"):
-            return 1e18
-        elif uom.startswith("z"):
-            return 1e21
-        elif uom.startswith("y"):
-            return 1e24
-        elif uom.startswith("r"):
-            return 1e27
-        elif uom.startswith("q"):
-            return 1e30
-        else:
-            return 1
-
     def hashrate_calc(self, unit_of_measurement):
         if self._hashrate is None:
             return None
 
-        return round(float(self._hashrate) / self.hashrate_multiplier(unit_of_measurement), 4)
+        return round(float(self._hashrate) / unit_to_multiplier(unit_of_measurement), 4)
+
+    def difficulty_calc(self, unit_of_measurement):
+        if self._difficulty is None:
+            return None
+
+        return round(float(self._difficulty) / unit_to_multiplier(unit_of_measurement), 4)
+
+    def mempool_size_calc(self, unit_of_measurement):
+        if self._state is None:
+            return None
+
+        return round(float(self._state) / unit_to_multiplier(unit_of_measurement), 4)
 
     @property
     def all_time_high_distance(self):
@@ -395,10 +385,22 @@ class CryptoinfoSensor(Entity):
             if child_sensor is None or child_sensor.attribute_key == ATTR_DIFFICULTY_RETARGET_ESTIMATED_DIFF:
                 output_attrs[ATTR_DIFFICULTY_RETARGET_ESTIMATED_DIFF] = self.difficulty_retarget_estimated_diff
 
+            if child_sensor is None or child_sensor.attribute_key == ATTR_DIFFICULTY_CALC:
+                output_attrs[ATTR_DIFFICULTY_CALC] = self.difficulty_calc(
+                    child_sensor.unit_of_measurement if child_sensor is not None else None
+                )
+
         if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_hashrate_types:
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_HASHRATE_CALC:
                 output_attrs[ATTR_HASHRATE_CALC] = self.hashrate_calc(
+                    child_sensor.unit_of_measurement if child_sensor is not None else None
+                )
+
+        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_SIZE_CALC:
+                output_attrs[ATTR_MEMPOOL_SIZE_CALC] = self.mempool_size_calc(
                     child_sensor.unit_of_measurement if child_sensor is not None else None
                 )
 

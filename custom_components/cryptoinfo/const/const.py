@@ -34,6 +34,7 @@ ATTR_24H_HIGH = "24h_high"
 ATTR_IMAGE_URL = "image_url"
 
 ATTR_DIFFICULTY = "difficulty"
+ATTR_DIFFICULTY_CALC = "difficulty_calc"
 ATTR_HASHRATE = "hashrate"
 ATTR_HASHRATE_CALC = "hashrate_calc"
 ATTR_POOL_CONTROL_1000B = "pool_control_1000b"
@@ -56,6 +57,7 @@ ATTR_BLOCK_TIME_IN_SECONDS = "block_time_in_seconds"
 
 ATTR_MEMPOOL_TX_COUNT = "mempool_tx_count"
 ATTR_MEMPOOL_TOTAL_FEE = "mempool_total_fee"
+ATTR_MEMPOOL_SIZE_CALC = "mempool_size_calc"
 
 API_BASE_URL_COINGECKO = "https://api.coingecko.com/api/v3/"
 API_BASE_URL_CRYPTOID = "https://chainz.cryptoid.info/"

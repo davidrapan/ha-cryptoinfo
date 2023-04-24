@@ -288,6 +288,25 @@ sensor:
       - "3C9sAK"
 
 
+  # BTC Mempool - API: Mempool.space
+  - platform: cryptoinfo
+    id: "BTC Mempool Size"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "vB"
+    update_frequency: 1
+    api_mode: "mempool_stats"
+    extra_sensors:
+      - property: mempool_tx_count
+        id: "ROGER Mempool TX Count"
+        unit_of_measurement: "tx"
+      - property: mempool_total_fee
+        id: "ROGER Mempool Total Fees"
+        unit_of_measurement: "satoshis"
+      - property: mempool_size_calc
+        id: "ROGER Mempool Size MB"
+        unit_of_measurement: "MB"
+
+
 
   # ROGER NOMP Pool stats - API: NOMP (Any NOMP based pool)
   - platform: cryptoinfo
