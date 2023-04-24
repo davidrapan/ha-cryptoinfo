@@ -1,24 +1,306 @@
+# Templated sensor calculating the value of a wallet
+template:
+  - sensor:
+      - name: "Bitcoin Owned"
+        unit_of_measurement: '$'
+        availability: >-
+          {{ is_number(states('sensor.cryptoinfo_btc_price_bitcoin_usd')) }}
+        state: >-
+          {% set owned_coin = 0.12345 %}
+          {{ (states('sensor.cryptoinfo_bitcoin_usd')|float * owned_coin) | round(5) }}
+
+
+# All Cryptoinfo Sensor Examples
 sensor:
+
+  # "Wallet" Sensor - API: CoinGecko
   - platform: cryptoinfo
-    id: "main wallet"
-    cryptocurrency_name: "ethereum"
+    id: "Main Wallet"
+    cryptocurrency_name: "bitcoin"
     currency_name: "eur"
     unit_of_measurement: "€"
-    multiplier: 1.5
+    multiplier: 0.0005
     update_frequency: 1
-
-  - platform: template
-    sensors:
-      cryptoinfo_main_wallet_ethereum_eur_24h_volume:
-        value_template: "{{ state_attr('sensor.cryptoinfo_main_wallet_ethereum_eur', 'volume') | round(0) }}"
+    extra_sensors:
+      - property: "24h_volume"
         unit_of_measurement: "€"
 
-  - platform: template
-    sensors:
-      crypto_bitcoin_owned:
-        friendly_name: "Bitcoin Owned"
-        unit_of_measurement: '$'
-        value_template: >-
-          {% if not is_state('sensor.cryptoinfo_bitcoin_usd', 'unknown') %}
-            {{ (states('sensor.cryptoinfo_bitcoin_usd')|float *0.12345) | round(2) }}
-          {%endif %}
+
+
+  # BTC Price USD - API: CoinGecko
+  - platform: cryptoinfo
+    id: "BTC Price"
+    cryptocurrency_name: "bitcoin"
+    currency_name: "usd"
+    unit_of_measurement: "$"
+    update_frequency: 1
+    extra_sensors:
+      - property: "all_time_high"
+        unit_of_measurement: "$"
+      - property: "all_time_high_distance"
+        unit_of_measurement: "$"
+
+
+  # BTC Price GBP - API: CoinGecko
+  - platform: cryptoinfo
+    id: "BTC Price GBP"
+    cryptocurrency_name: "bitcoin"
+    currency_name: "gbp"
+    unit_of_measurement: "£"
+    update_frequency: 1
+
+
+  # BTC Dom - API: CoinGecko
+  - platform: cryptoinfo
+    id: "BTC Dominance"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "dominance"
+
+
+  # ETH Dom - API: CoinGecko
+  - platform: cryptoinfo
+    id: "ETH Dominance"
+    cryptocurrency_name: "eth"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "dominance"
+
+
+  # BTC Chain Summary - API: CryptoID
+  - platform: cryptoinfo
+    id: "BTC Height"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "Blks"
+    update_frequency: 2
+    api_mode: "chain_summary"
+    # Default difficulty multiplier for BTC
+    diff_multiplier: 4294967296
+    # Default block time in minutes for BTC
+    block_time_minutes: 10
+    # Default difficulty window size in blocks for BTC
+    difficulty_window: 2016
+    extra_sensors:
+      # This is a special sensor which will automatically convert the value based on the unit_of_measurement e.g. GH, TH, PH, EH
+      - property: hashrate_calc
+        id: "BTC Hashrate EH"
+        unit_of_measurement: EH
+      # Progress through the current difficulty adjustment window
+      - property: difficulty_block_progress
+        id: "BTC Difficulty Block Progress"
+        unit_of_measurement: "Blks"
+        state_class: total_increasing
+      # Next difficulty retarget height
+      - property: difficulty_retarget_height
+        id: "BTC Difficulty Retarget Height"
+        unit_of_measurement: "Blks"
+      # Current estimated time between blocks in seconds
+      - property: block_time_in_seconds
+        id: "BTC Block Time In Seconds"
+        unit_of_measurement: "seconds"
+      # Estimated time until next difficulty retarget in seconds
+      - property: difficulty_retarget_seconds
+        id: "BTC Difficulty Retarget Seconds"
+        unit_of_measurement: "seconds"
+      # Estimated difficulty percent change
+      - property: difficulty_retarget_percent_change
+        id: "BTC Difficulty Retarget Percent Change"
+        unit_of_measurement: "%"
+      # Estimated new difficulty at retarget
+      - property: difficulty_retarget_estimated_diff
+        id: "BTC Difficulty Retarget Estimated Diff"
+        unit_of_measurement: ""
+
+
+  # BTC Last Difficulty timestamp - API: CryptoID
+  # Requires chain_summary sensor to be enabled or supplied a height to fetch as below
+  - platform: cryptoinfo
+    id: "BTC Last Diff Timestamp"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "s"
+    update_frequency: 1
+    api_mode: "chain_block_time"
+  # BTC Last Difficulty timestamp sensor with template
+  - platform: cryptoinfo
+    id: "BTC Last Diff Timestamp Templated"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "s"
+    update_frequency: 1
+    api_mode: "chain_block_time"
+    fetch_args_template: "{{ states('sensor.some_sensor_with_a_block_height_to_fetch') }}"
+
+
+  # BTC Orphaned Blocks Today - API: CryptoID
+  - platform: cryptoinfo
+    id: "BTC Orphans Today"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "Blks"
+    update_frequency: 1
+    api_mode: "chain_orphans"
+
+
+
+  # BTC Hashrate Control Sensors
+  - platform: cryptoinfo
+    id: "BTC Foundry USA Hash Control 100 Blocks"
+    unique_id: "btc_cco_bc1qxh"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "FoundryUSA"
+      - "bc1qxh"
+  - platform: cryptoinfo
+    id: "BTC F2Pool Hash Control 100 Blocks"
+    unique_id: "btc_cco_1KFHE7"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "F2Pool"
+      - "1KFHE7"
+  - platform: cryptoinfo
+    id: "BTC Binance Hash Control 100 Blocks"
+    unique_id: "btc_cco_1Q8QR5"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "Binance"
+      - "1Q8QR5"
+      - "3L8Ck6"
+  - platform: cryptoinfo
+    id: "BTC AntPool Hash Control 100 Blocks"
+    unique_id: "btc_cco_AntPool38XnPv"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "AntPool"
+      - "38XnPv"
+  - platform: cryptoinfo
+    id: "BTC ViaBTC Hash Control 100 Blocks"
+    unique_id: "btc_cco_ViaBTC"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "ViaBTC"
+      - "18cBEM"
+  - platform: cryptoinfo
+    id: "BTC BTC.Com Hash Control 100 Blocks"
+    unique_id: "btc_cco_36cWgj"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "BTC.Com"
+      - "36cWgj"
+  - platform: cryptoinfo
+    id: "BTC MaraPool Hash Control 100 Blocks"
+    unique_id: "btc_cco_15MdAH"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "MaraPool"
+      - "15MdAH"
+  - platform: cryptoinfo
+    id: "BTC Poolin Hash Control 100 Blocks"
+    unique_id: "btc_cco_poolin"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "Poolin"
+      - "33TbzA"
+  - platform: cryptoinfo
+    id: "BTC Pegapool Hash Control 100 Blocks"
+    unique_id: "btc_cco_pegapool"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "3GRKUV"
+  - platform: cryptoinfo
+    id: "BTC Luxor Hash Control 100 Blocks"
+    unique_id: "btc_cco_luxor"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "39bitU"
+  - platform: cryptoinfo
+    id: "BTC EMCD.io Hash Control 100 Blocks"
+    unique_id: "btc_cco_emcdio"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "3LwoXD"
+  - platform: cryptoinfo
+    id: "BTC Slushpool Hash Control 100 Blocks"
+    unique_id: "btc_cco_slush"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "1CK6KH"
+  - platform: cryptoinfo
+    id: "BTC CarbonNegative Hash Control 100 Blocks"
+    unique_id: "btc_cco_carbonnegative"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "3KZDwm"
+  - platform: cryptoinfo
+    id: "BTC SBICrypto Hash Control 100 Blocks"
+    unique_id: "btc_cco_sbicrypto"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "bc1qte"
+  - platform: cryptoinfo
+    id: "BTC Ultimus Hash Control 100 Blocks"
+    unique_id: "btc_cco_ultimus"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "%"
+    update_frequency: 1
+    api_mode: "chain_control"
+    pool_prefix:
+      - "3C9sAK"
+
+
+
+  # ROGER NOMP Pool stats - API: NOMP (Any NOMP based pool)
+  - platform: cryptoinfo
+    id: "ROGER Pool Hashrate"
+    cryptocurrency_name: "roger"
+    unit_of_measurement: "H"
+    update_frequency: 3
+    api_mode: "nomp_pool_stats"
+    api_domain_name: mining.theholyroger.com
+    pool_name: theholyrogercoin
+    extra_sensors:
+      - property: hashrate_calc
+        id: "ROGER Pool Hashrate GH"
+        unit_of_measurement: GH
+
+
