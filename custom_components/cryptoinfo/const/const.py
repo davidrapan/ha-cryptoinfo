@@ -1,4 +1,10 @@
 import logging
+from homeassistant.const import Platform
+
+DOMAIN = "cryptoinfo"
+PLATFORMS = [
+    Platform.SENSOR,
+]
 
 CONF_CRYPTOCURRENCY_NAME = "cryptocurrency_name"
 CONF_CURRENCY_NAME = "currency_name"

@@ -6,10 +6,11 @@ Author: Johnny Visser
 
 import voluptuous as vol
 from datetime import timedelta
-import urllib.error
 
 from .const.const import (
     _LOGGER,
+    DOMAIN,
+    PLATFORMS,
     CONF_CRYPTOCURRENCY_NAME,
     CONF_CURRENCY_NAME,
     CONF_MULTIPLIER,
@@ -41,9 +42,13 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
 )
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.reload import async_setup_reload_service
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+
+    await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
+
     _LOGGER.debug("Setup Cryptoinfo sensor")
 
     id_name = config.get(CONF_ID)
@@ -92,11 +97,11 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if new_sensor.check_valid_config(False):
             entities.append(new_sensor)
             entities.extend(new_sensor._get_child_sensors())
-    except urllib.error.HTTPError as error:
-        _LOGGER.error(error.reason)
+    except Exception as error:
+        _LOGGER.error(f"{type(error).__name__}: {error}")
         return False
 
-    add_entities(entities)
+    async_add_entities(entities)
     CryptoInfoEntityManager.instance().add_entities(entities)
 
 

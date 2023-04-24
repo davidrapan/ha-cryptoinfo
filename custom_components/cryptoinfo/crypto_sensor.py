@@ -4,7 +4,10 @@ Sensor component for Cryptoinfo
 Author: Johnny Visser
 """
 
-import requests
+import aiohttp
+import asyncio
+import async_timeout
+import json
 import time
 import traceback
 from datetime import datetime
@@ -83,6 +86,7 @@ from .utils import unit_to_multiplier
 from homeassistant.components.sensor import (
     CONF_STATE_CLASS,
     SensorDeviceClass,
+    SensorEntity,
     SensorStateClass,
 )
 from homeassistant.const import (
@@ -91,12 +95,12 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
 )
 from homeassistant.exceptions import TemplateError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.template import Template
 from homeassistant.util import Throttle
-from homeassistant.helpers.entity import Entity
 
 
-class CryptoinfoSensor(Entity):
+class CryptoinfoSensor(SensorEntity):
     def __init__(
         self,
         hass,
@@ -122,6 +126,7 @@ class CryptoinfoSensor(Entity):
     ):
         # Internal Properties
         self.hass = hass
+        self._session = async_get_clientsession(hass) if hass is not None else None
         self.data = None
         self.cryptocurrency_name = cryptocurrency_name
         self.currency_name = currency_name
@@ -143,7 +148,7 @@ class CryptoinfoSensor(Entity):
         self._child_sensor_config = extra_sensors
 
         # HASS Attributes
-        self.update = Throttle(update_frequency)(self._update)
+        self.async_update = Throttle(update_frequency)(self._async_update)
         self._attr_unique_id = unique_id if unique_id is not None and len(unique_id) else self._build_unique_id()
         self._name = self._build_name()
         self._state = None
@@ -477,7 +482,7 @@ class CryptoinfoSensor(Entity):
 
     @classmethod
     def get_valid_extra_sensor_keys(cls):
-        empty_sensor = CryptoinfoSensor(*["" for x in range(7)])
+        empty_sensor = CryptoinfoSensor(None, *["" for x in range(6)])
         keys = list(empty_sensor.all_extra_sensor_keys)
         del empty_sensor
 
@@ -576,31 +581,34 @@ class CryptoinfoSensor(Entity):
 
         return True
 
-    def _log_api_error(self, error, r, tb):
+    def _log_api_error(self, error, tb):
         _LOGGER.error(
-            "Cryptoinfo error fetching update: "
+            f"Cryptoinfo error fetching update for {self.name}: "
             + f"{type(error).__name__}: {error}"
-            + " - response status: "
-            + str(r.status_code if r is not None else None)
-            + " - "
-            + str(r.reason if r is not None else None)
         )
         _LOGGER.error(tb)
 
-    def _api_fetch(self, api_data, url, extract_data, extract_primary):
-        r = None
+    async def _async_api_fetch(self, api_data, url, extract_data, extract_primary, encoding="utf-8"):
         try:
             if api_data is None:
-                _LOGGER.warning(f"Fetching data for {self.name}")
-                r = requests.get(url=url)
-                api_data = extract_data(r.json())
-
+                async with async_timeout.timeout(30):
+                    response = await self._session.get(url)
+                    if response.status == 200:
+                        resp_text = await response.text(encoding=encoding)
+                        api_data = extract_data(json.loads(resp_text))
             primary_data = extract_primary(api_data)
             self.data = api_data
-
+        except asyncio.TimeoutError:
+            _LOGGER.error("Timeout fetching update for %s", self.name)
+            primary_data, api_data = None, None
+        except aiohttp.ClientError as err:
+            _LOGGER.error(
+                "Error fetching update for %s: %r", self.name, err
+            )
+            primary_data, api_data = None, None
         except Exception as error:
             tb = traceback.format_exc()
-            self._log_api_error(error, r, tb)
+            self._log_api_error(error, tb)
             primary_data, api_data = None, None
 
         return primary_data, api_data
@@ -699,11 +707,11 @@ class CryptoinfoSensor(Entity):
     def _extract_data_mempool_stats_primary(self, api_data):
         return int(api_data["vsize"])
 
-    def _fetch_price_data_main(self, api_data=None):
+    async def _fetch_price_data_main(self, api_data=None):
         if not self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
             raise ValueError()
 
-        price_data, api_data = self._api_fetch(
+        price_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_PRICE_MAIN.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
             self._extract_data_price_main_full, self._extract_data_price_main_primary
@@ -733,11 +741,11 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
-    def _fetch_price_data_alternate(self, api_data=None):
+    async def _fetch_price_data_alternate(self, api_data=None):
         if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
             raise ValueError()
 
-        price_data, api_data = self._api_fetch(
+        price_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_PRICE_ALT.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
             self._extract_data_price_simple_full, self._extract_data_price_simple_primary
@@ -757,8 +765,8 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
-    def _fetch_dominance(self, api_data=None):
-        dominance_data, api_data = self._api_fetch(
+    async def _fetch_dominance(self, api_data=None):
+        dominance_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_DOMINANCE.format(API_BASE_URL_COINGECKO),
             self._extract_data_dominance_full,
@@ -776,12 +784,13 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
-    def _fetch_chain_summary(self, api_data=None):
-        summary_data, api_data = self._api_fetch(
+    async def _fetch_chain_summary(self, api_data=None):
+        summary_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_CHAIN_SUMMARY.format(API_BASE_URL_CRYPTOID),
             self._extract_data_chain_summary_full,
-            self._extract_data_chain_summary_primary
+            self._extract_data_chain_summary_primary,
+            encoding="latin-1"
         )
 
         if summary_data is not None:
@@ -797,12 +806,13 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
-    def _fetch_chain_control(self, api_data=None):
-        control_data, api_data = self._api_fetch(
+    async def _fetch_chain_control(self, api_data=None):
+        control_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_CHAIN_CONTROL.format(API_BASE_URL_CRYPTOID, self.cryptocurrency_name),
             self._extract_data_chain_control_full,
-            self._extract_data_chain_control_primary
+            self._extract_data_chain_control_primary,
+            encoding="latin-1"
         )
 
         if control_data is not None:
@@ -817,12 +827,13 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
-    def _fetch_chain_orphans(self, api_data=None):
-        orphans_data, api_data = self._api_fetch(
+    async def _fetch_chain_orphans(self, api_data=None):
+        orphans_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_CHAIN_ORPHANS.format(API_BASE_URL_CRYPTOID, self.cryptocurrency_name),
             self._extract_data_chain_orphans_full,
-            self._extract_data_chain_orphans_primary
+            self._extract_data_chain_orphans_primary,
+            encoding="latin-1"
         )
 
         if orphans_data is not None:
@@ -835,7 +846,7 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
-    def _fetch_chain_block_time(self, api_data=None):
+    async def _fetch_chain_block_time(self, api_data=None):
         (block_height_arg, ) = self._get_fetch_args()
 
         try:
@@ -854,11 +865,12 @@ class CryptoinfoSensor(Entity):
         if self._state is not None and self._state > 0 and self._block_height == block_height:
             api_data = self._state
 
-        block_time_data, api_data = self._api_fetch(
+        block_time_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_CHAIN_BLOCK_TIME.format(API_BASE_URL_CRYPTOID, self.cryptocurrency_name, block_height),
             self._extract_data_chain_block_time_full,
-            self._extract_data_chain_block_time_primary
+            self._extract_data_chain_block_time_primary,
+            encoding="latin-1"
         )
 
         if block_time_data is not None:
@@ -872,10 +884,10 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
-    def _fetch_nomp_pool_stats(self, api_data=None):
+    async def _fetch_nomp_pool_stats(self, api_data=None):
         self.check_valid_config()
 
-        hashrate_data, api_data = self._api_fetch(
+        hashrate_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_NOMP_POOL_STATS.format(self._api_domain_name),
             self._extract_data_nomp_pool_stats_full,
@@ -899,10 +911,10 @@ class CryptoinfoSensor(Entity):
 
         return self.data
 
-    def _fetch_mempool_stats(self, api_data=None):
+    async def _fetch_mempool_stats(self, api_data=None):
         self.check_valid_config()
 
-        mempool_data, api_data = self._api_fetch(
+        mempool_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_MEMPOOL_STATS.format(API_BASE_URL_MEMPOOLSPACE),
             self._extract_data_mempool_stats_full,
@@ -936,7 +948,7 @@ class CryptoinfoSensor(Entity):
         if args_compiled:
             try:
                 args_to_render = {"arguments": args}
-                rendered_args = args_compiled.render(args_to_render)
+                rendered_args = args_compiled.async_render(args_to_render)
             except TemplateError as ex:
                 _LOGGER.exception("Error rendering args template: %s", ex)
                 return
@@ -1077,7 +1089,7 @@ class CryptoinfoSensor(Entity):
 
         return child_sensors
 
-    def _update(self):
+    async def _async_update(self):
         api_data = None
 
         if not CryptoInfoEntityManager.instance().should_fetch_entity(self):
@@ -1085,32 +1097,32 @@ class CryptoinfoSensor(Entity):
 
         try:
             if self._fetch_type == CryptoInfoDataFetchType.DOMINANCE:
-                api_data = self._fetch_dominance(api_data)
+                api_data = await self._fetch_dominance(api_data)
 
             elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
-                api_data = self._fetch_chain_summary(api_data)
+                api_data = await self._fetch_chain_summary(api_data)
 
             elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
-                api_data = self._fetch_chain_control(api_data)
+                api_data = await self._fetch_chain_control(api_data)
 
             elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_ORPHANS:
-                api_data = self._fetch_chain_orphans(api_data)
+                api_data = await self._fetch_chain_orphans(api_data)
 
             elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
-                api_data = self._fetch_chain_block_time(api_data)
+                api_data = await self._fetch_chain_block_time(api_data)
 
             elif self._fetch_type == CryptoInfoDataFetchType.NOMP_POOL_STATS:
-                api_data = self._fetch_nomp_pool_stats(api_data)
+                api_data = await self._fetch_nomp_pool_stats(api_data)
 
             elif self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
-                api_data = self._fetch_mempool_stats(api_data)
+                api_data = await self._fetch_mempool_stats(api_data)
 
             else:
-                api_data = self._fetch_price_data_main(api_data)
+                api_data = await self._fetch_price_data_main(api_data)
 
         except ValueError:
             try:
-                api_data = self._fetch_price_data_alternate(api_data)
+                api_data = await self._fetch_price_data_alternate(api_data)
             except ValueError:
                 self._update_all_properties(available=False)
                 return
@@ -1155,6 +1167,9 @@ class CryptoinfoChildSensor(CryptoinfoSensor):
     @property
     def attribute_key(self):
         return self._attribute_key
+
+    async def _async_update(self):
+        self._update()
 
     def _update(self):
         new_state = self._parent_sensor.get_child_data(self)

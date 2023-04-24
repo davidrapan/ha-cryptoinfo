@@ -24,3 +24,4 @@ Version: 0.2.1 20230422 - Fix pool control unique IDs
 Version: 0.2.2 20230423 - Allow list of pool prefixes for chain control sensor
 Version: 0.2.3 20230423 - Add mempool.space stats
 Version: 0.2.4 20230423 - Add calculated difficulty and mempool size child sensors
+Version: 0.2.5 20230425 - Switch to asyncio platform setup/aiohttp, add reload service, halving sensors.

@@ -1,9 +1,10 @@
 {
   "domain": "cryptoinfo",
   "name": "Cryptoinfo",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "documentation": "https://github.com/TheHolyRoger/hass-cryptoinfo",
   "dependencies": [],
+  "iot_class": "cloud_polling",
   "codeowners": [
     "@heyajohnny",
     "@TheHolyRoger"
