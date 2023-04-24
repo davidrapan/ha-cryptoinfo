@@ -297,13 +297,13 @@ sensor:
     api_mode: "mempool_stats"
     extra_sensors:
       - property: mempool_tx_count
-        id: "ROGER Mempool TX Count"
+        id: "BTC Mempool TX Count"
         unit_of_measurement: "tx"
       - property: mempool_total_fee
-        id: "ROGER Mempool Total Fees"
+        id: "BTC Mempool Total Fees"
         unit_of_measurement: "satoshis"
       - property: mempool_size_calc
-        id: "ROGER Mempool Size MB"
+        id: "BTC Mempool Size MB"
         unit_of_measurement: "MB"
 
 
