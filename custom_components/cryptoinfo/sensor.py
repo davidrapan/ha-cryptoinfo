@@ -24,6 +24,7 @@ from .const.const import (
     CONF_DIFF_MULTIPLIER,
     CONF_BLOCK_TIME_MINUTES,
     CONF_DIFFICULTY_WINDOW,
+    CONF_HALVING_WINDOW,
 )
 
 from .manager import CryptoInfoEntityManager, CryptoInfoDataFetchType
@@ -62,6 +63,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     diff_multiplier = config.get(CONF_DIFF_MULTIPLIER)
     block_time_minutes = config.get(CONF_BLOCK_TIME_MINUTES)
     difficulty_window = config.get(CONF_DIFFICULTY_WINDOW)
+    halving_window = config.get(CONF_HALVING_WINDOW)
 
     entities = []
 
@@ -85,6 +87,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             diff_multiplier,
             block_time_minutes,
             difficulty_window,
+            halving_window,
         )
         if new_sensor.check_valid_config(False):
             entities.append(new_sensor)
@@ -135,5 +138,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_DIFF_MULTIPLIER, default=""): cv.string,
         vol.Optional(CONF_BLOCK_TIME_MINUTES, default=""): cv.string,
         vol.Optional(CONF_DIFFICULTY_WINDOW, default=""): cv.string,
+        vol.Optional(CONF_HALVING_WINDOW, default=""): cv.string,
     }
 )

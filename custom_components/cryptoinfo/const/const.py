@@ -14,6 +14,7 @@ CONF_POOL_NAME = "pool_name"
 CONF_DIFF_MULTIPLIER = "diff_multiplier"
 CONF_BLOCK_TIME_MINUTES = "block_time_minutes"
 CONF_DIFFICULTY_WINDOW = "difficulty_window"
+CONF_HALVING_WINDOW = "halving_window"
 
 SENSOR_PREFIX = "Cryptoinfo "
 ATTR_LAST_UPDATE = "last_update"
@@ -46,6 +47,10 @@ ATTR_DIFFICULTY_RETARGET_HEIGHT = "difficulty_retarget_height"
 ATTR_DIFFICULTY_RETARGET_SECONDS = "difficulty_retarget_seconds"
 ATTR_DIFFICULTY_RETARGET_PERCENT_CHANGE = "difficulty_retarget_percent_change"
 ATTR_DIFFICULTY_RETARGET_ESTIMATED_DIFF = "difficulty_retarget_estimated_diff"
+ATTR_HALVING_BLOCK_PROGRESS = "halving_block_progress"
+ATTR_HALVING_BLOCKS_REMAINING = "halving_blocks_remaining"
+ATTR_NEXT_HALVING_HEIGHT = "next_halving_height"
+ATTR_TOTAL_HALVINGS_TO_DATE = "total_halvings_to_date"
 
 ATTR_WORKER_COUNT = "worker_count"
 ATTR_LAST_BLOCK = "last_block"
@@ -85,5 +90,6 @@ BLOCKCHAIN_DIFFICULTY_WINDOW = 2016
 DEFAULT_CHAIN_DIFFICULTY_WINDOW = 2016
 DEFAULT_CHAIN_DIFF_MULTIPLIER = 4294967296
 DEFAULT_CHAIN_BLOCK_TIME_MINS = 10.0
+DEFAULT_CHAIN_HALVING_WINDOW = 210000
 
 _LOGGER = logging.getLogger(__name__)

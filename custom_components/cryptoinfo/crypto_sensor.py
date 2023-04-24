@@ -41,6 +41,10 @@ from .const.const import (
     ATTR_DIFFICULTY_RETARGET_SECONDS,
     ATTR_DIFFICULTY_RETARGET_PERCENT_CHANGE,
     ATTR_DIFFICULTY_RETARGET_ESTIMATED_DIFF,
+    ATTR_HALVING_BLOCK_PROGRESS,
+    ATTR_HALVING_BLOCKS_REMAINING,
+    ATTR_NEXT_HALVING_HEIGHT,
+    ATTR_TOTAL_HALVINGS_TO_DATE,
     ATTR_WORKER_COUNT,
     ATTR_LAST_BLOCK,
     ATTR_BLOCKS_PENDING,
@@ -62,9 +66,14 @@ from .const.const import (
     API_ENDPOINT_CHAIN_BLOCK_TIME,
     API_ENDPOINT_NOMP_POOL_STATS,
     API_ENDPOINT_MEMPOOL_STATS,
+    CONF_DIFF_MULTIPLIER,
+    CONF_BLOCK_TIME_MINUTES,
+    CONF_DIFFICULTY_WINDOW,
+    CONF_HALVING_WINDOW,
     DEFAULT_CHAIN_DIFFICULTY_WINDOW,
     DEFAULT_CHAIN_DIFF_MULTIPLIER,
     DEFAULT_CHAIN_BLOCK_TIME_MINS,
+    DEFAULT_CHAIN_HALVING_WINDOW,
     DAY_SECONDS,
 )
 
@@ -108,6 +117,7 @@ class CryptoinfoSensor(Entity):
         diff_multiplier="",
         block_time_minutes="",
         difficulty_window="",
+        halving_window="",
         is_child_sensor=False,
     ):
         # Internal Properties
@@ -121,6 +131,7 @@ class CryptoinfoSensor(Entity):
         self._block_time_minutes = float(block_time_minutes) if block_time_minutes.replace(
             ".", "", 1).isdigit() else DEFAULT_CHAIN_BLOCK_TIME_MINS
         self._difficulty_window = int(difficulty_window) if difficulty_window.isdigit() else DEFAULT_CHAIN_DIFFICULTY_WINDOW
+        self._halving_window = int(halving_window) if halving_window.isdigit() else DEFAULT_CHAIN_HALVING_WINDOW
         self._internal_id_name = id_name if id_name is not None else ""
         self._fetch_type = CryptoInfoEntityManager.instance().get_fetch_type_from_str(api_mode)
         self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
@@ -275,6 +286,34 @@ class CryptoinfoSensor(Entity):
             return None
         return round((self._difficulty * (1 + (self.difficulty_retarget_percent_change / 100))), 2)
 
+    @property
+    def halving_block_progress(self):
+        if self.state is None:
+            return None
+
+        return int(self.state % self._halving_window)
+
+    @property
+    def halving_blocks_remaining(self):
+        if self.halving_block_progress is None:
+            return None
+
+        return int(self._halving_window - self.halving_block_progress)
+
+    @property
+    def next_halving_height(self):
+        if self.state is None or self.halving_block_progress is None:
+            return None
+
+        return int(self.state + (self._halving_window - self.halving_block_progress))
+
+    @property
+    def total_halvings_to_date(self):
+        if self.state is None:
+            return None
+
+        return int(self.state // self._halving_window)
+
     def hashrate_calc(self, unit_of_measurement):
         if self._hashrate is None:
             return None
@@ -341,6 +380,10 @@ class CryptoinfoSensor(Entity):
         if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
             output_attrs[ATTR_DIFFICULTY] = self._difficulty
             output_attrs[ATTR_HASHRATE] = self._hashrate
+            output_attrs[CONF_DIFF_MULTIPLIER] = self._diff_multiplier
+            output_attrs[CONF_BLOCK_TIME_MINUTES] = self._block_time_minutes
+            output_attrs[CONF_DIFFICULTY_WINDOW] = self._difficulty_window
+            output_attrs[CONF_HALVING_WINDOW] = self._halving_window
 
         if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
             output_attrs[ATTR_POOL_CONTROL_1000B] = self._pool_control_1000b
@@ -389,6 +432,18 @@ class CryptoinfoSensor(Entity):
                 output_attrs[ATTR_DIFFICULTY_CALC] = self.difficulty_calc(
                     child_sensor.unit_of_measurement if child_sensor is not None else None
                 )
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_HALVING_BLOCK_PROGRESS:
+                output_attrs[ATTR_HALVING_BLOCK_PROGRESS] = self.halving_block_progress
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_HALVING_BLOCKS_REMAINING:
+                output_attrs[ATTR_HALVING_BLOCKS_REMAINING] = self.halving_blocks_remaining
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_NEXT_HALVING_HEIGHT:
+                output_attrs[ATTR_NEXT_HALVING_HEIGHT] = self.next_halving_height
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_TOTAL_HALVINGS_TO_DATE:
+                output_attrs[ATTR_TOTAL_HALVINGS_TO_DATE] = self.total_halvings_to_date
 
         if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_hashrate_types:
 
