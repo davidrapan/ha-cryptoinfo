@@ -57,6 +57,7 @@ from .const.const import (
     ATTR_MEMPOOL_TX_COUNT,
     ATTR_MEMPOOL_TOTAL_FEE,
     ATTR_MEMPOOL_SIZE_CALC,
+    ATTR_MEMPOOL_AVERAGE_FEE_PER_TX,
     API_BASE_URL_COINGECKO,
     API_BASE_URL_CRYPTOID,
     API_BASE_URL_MEMPOOLSPACE,
@@ -338,6 +339,13 @@ class CryptoinfoSensor(SensorEntity):
         return round(float(self._state) / unit_to_multiplier(unit_of_measurement), 4)
 
     @property
+    def mempool_average_fee_per_tx(self):
+        if self._mempool_total_fee is None or self._mempool_tx_count is None:
+            return None
+
+        return int(self._mempool_total_fee / self._mempool_tx_count)
+
+    @property
     def all_time_high_distance(self):
         if self._all_time_high is None or self.state is None:
             return None
@@ -463,6 +471,9 @@ class CryptoinfoSensor(SensorEntity):
                 output_attrs[ATTR_MEMPOOL_SIZE_CALC] = self.mempool_size_calc(
                     child_sensor.unit_of_measurement if child_sensor is not None else None
                 )
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_AVERAGE_FEE_PER_TX:
+                output_attrs[ATTR_MEMPOOL_AVERAGE_FEE_PER_TX] = self.mempool_average_fee_per_tx
 
         if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
 
