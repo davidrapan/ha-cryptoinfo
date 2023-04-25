@@ -10,7 +10,7 @@ import async_timeout
 import json
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .const.const import (
     _LOGGER,
@@ -143,7 +143,7 @@ class CryptoinfoSensor(SensorEntity):
         self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
         self._api_domain_name = api_domain_name if api_domain_name and len(api_domain_name) else None
         self._pool_name = pool_name if pool_name and len(pool_name) else None
-        self._update_frequency = update_frequency
+        self._update_frequency = update_frequency if isinstance(update_frequency, timedelta) else timedelta(minutes=1)
         self._is_child_sensor = is_child_sensor
         self._child_sensors = list()
         self._child_sensor_config = extra_sensors
@@ -543,12 +543,12 @@ class CryptoinfoSensor(SensorEntity):
             else:
                 id_slug = f"{self._fetch_type.id_slug}"
             return "{0}{1}{2}_{3}".format(
-                self.cryptocurrency_name, self.multiplier, self._update_frequency, id_slug,
+                self.cryptocurrency_name, self.multiplier, self._update_frequency.seconds, id_slug,
             )
 
         else:
             return "{0}{1}{2}{3}".format(
-                self.cryptocurrency_name, self.currency_name, self.multiplier, self._update_frequency
+                self.cryptocurrency_name, self.currency_name, self.multiplier, self._update_frequency.seconds
             )
 
     def _build_device_class(self):
