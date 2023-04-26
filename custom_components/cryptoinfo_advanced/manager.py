@@ -1,7 +1,7 @@
 import time
 
 
-class CryptoInfoFetchProp:
+class CryptoInfoAdvFetchProp:
     def __init__(self, slug, parent_sensor=None):
         self._slug = slug
         self._name = self._build_name(parent_sensor)
@@ -63,19 +63,19 @@ class CryptoInfoFetchProp:
             return self.slug < str(other)
 
 
-class CryptoInfoDataFetchType:
-    PRICE_MAIN = CryptoInfoFetchProp("price_main")
-    PRICE_SIMPLE = CryptoInfoFetchProp("price_simple")
-    DOMINANCE = CryptoInfoFetchProp("dominance")
-    CHAIN_SUMMARY = CryptoInfoFetchProp("chain_summary")
-    CHAIN_CONTROL = CryptoInfoFetchProp("chain_control")
-    CHAIN_ORPHANS = CryptoInfoFetchProp("chain_orphans")
-    CHAIN_BLOCK_TIME = CryptoInfoFetchProp("chain_block_time")
-    NOMP_POOL_STATS = CryptoInfoFetchProp("nomp_pool_stats")
-    MEMPOOL_STATS = CryptoInfoFetchProp("mempool_stats")
+class CryptoInfoAdvDataFetchType:
+    PRICE_MAIN = CryptoInfoAdvFetchProp("price_main")
+    PRICE_SIMPLE = CryptoInfoAdvFetchProp("price_simple")
+    DOMINANCE = CryptoInfoAdvFetchProp("dominance")
+    CHAIN_SUMMARY = CryptoInfoAdvFetchProp("chain_summary")
+    CHAIN_CONTROL = CryptoInfoAdvFetchProp("chain_control")
+    CHAIN_ORPHANS = CryptoInfoAdvFetchProp("chain_orphans")
+    CHAIN_BLOCK_TIME = CryptoInfoAdvFetchProp("chain_block_time")
+    NOMP_POOL_STATS = CryptoInfoAdvFetchProp("nomp_pool_stats")
+    MEMPOOL_STATS = CryptoInfoAdvFetchProp("mempool_stats")
 
 
-class CryptoInfoEntityManager:
+class CryptoInfoAdvEntityManager:
     _instance = None
 
     def __init__(self):
@@ -92,65 +92,65 @@ class CryptoInfoEntityManager:
     @property
     def fetch_types(self):
         return [
-            CryptoInfoDataFetchType.PRICE_MAIN,
-            CryptoInfoDataFetchType.PRICE_SIMPLE,
-            CryptoInfoDataFetchType.DOMINANCE,
-            CryptoInfoDataFetchType.CHAIN_SUMMARY,
-            CryptoInfoDataFetchType.CHAIN_CONTROL,
-            CryptoInfoDataFetchType.CHAIN_ORPHANS,
-            CryptoInfoDataFetchType.CHAIN_BLOCK_TIME,
-            CryptoInfoDataFetchType.NOMP_POOL_STATS,
-            CryptoInfoDataFetchType.MEMPOOL_STATS,
+            CryptoInfoAdvDataFetchType.PRICE_MAIN,
+            CryptoInfoAdvDataFetchType.PRICE_SIMPLE,
+            CryptoInfoAdvDataFetchType.DOMINANCE,
+            CryptoInfoAdvDataFetchType.CHAIN_SUMMARY,
+            CryptoInfoAdvDataFetchType.CHAIN_CONTROL,
+            CryptoInfoAdvDataFetchType.CHAIN_ORPHANS,
+            CryptoInfoAdvDataFetchType.CHAIN_BLOCK_TIME,
+            CryptoInfoAdvDataFetchType.NOMP_POOL_STATS,
+            CryptoInfoAdvDataFetchType.MEMPOOL_STATS,
         ]
 
     @property
     def fetch_market_cap_types(self):
         return [
-            CryptoInfoDataFetchType.PRICE_MAIN,
-            CryptoInfoDataFetchType.PRICE_SIMPLE,
-            CryptoInfoDataFetchType.DOMINANCE,
+            CryptoInfoAdvDataFetchType.PRICE_MAIN,
+            CryptoInfoAdvDataFetchType.PRICE_SIMPLE,
+            CryptoInfoAdvDataFetchType.DOMINANCE,
         ]
 
     @property
     def fetch_supply_types(self):
         return [
-            CryptoInfoDataFetchType.PRICE_MAIN,
-            CryptoInfoDataFetchType.CHAIN_SUMMARY,
+            CryptoInfoAdvDataFetchType.PRICE_MAIN,
+            CryptoInfoAdvDataFetchType.CHAIN_SUMMARY,
         ]
 
     @property
     def fetch_price_types(self):
         return [
-            CryptoInfoDataFetchType.PRICE_MAIN,
-            CryptoInfoDataFetchType.PRICE_SIMPLE,
+            CryptoInfoAdvDataFetchType.PRICE_MAIN,
+            CryptoInfoAdvDataFetchType.PRICE_SIMPLE,
         ]
 
     @property
     def fetch_time_types(self):
         return [
-            CryptoInfoDataFetchType.CHAIN_BLOCK_TIME,
+            CryptoInfoAdvDataFetchType.CHAIN_BLOCK_TIME,
         ]
 
     @property
     def fetch_block_height_types(self):
         return [
-            CryptoInfoDataFetchType.NOMP_POOL_STATS,
-            CryptoInfoDataFetchType.CHAIN_BLOCK_TIME,
+            CryptoInfoAdvDataFetchType.NOMP_POOL_STATS,
+            CryptoInfoAdvDataFetchType.CHAIN_BLOCK_TIME,
         ]
 
     @property
     def fetch_hashrate_types(self):
         return [
-            CryptoInfoDataFetchType.NOMP_POOL_STATS,
-            CryptoInfoDataFetchType.CHAIN_SUMMARY,
+            CryptoInfoAdvDataFetchType.NOMP_POOL_STATS,
+            CryptoInfoAdvDataFetchType.CHAIN_SUMMARY,
         ]
 
     @property
     def fetch_shared_types(self):
         return [
-            CryptoInfoDataFetchType.DOMINANCE,
-            CryptoInfoDataFetchType.CHAIN_SUMMARY,
-            CryptoInfoDataFetchType.CHAIN_CONTROL,
+            CryptoInfoAdvDataFetchType.DOMINANCE,
+            CryptoInfoAdvDataFetchType.CHAIN_SUMMARY,
+            CryptoInfoAdvDataFetchType.CHAIN_CONTROL,
         ]
 
     def get_extra_sensor_fetch_type_from_str(self, parent_sensor, attribute_key):
@@ -158,19 +158,19 @@ class CryptoInfoEntityManager:
             if t == attribute_key:
                 return t
 
-        t = CryptoInfoFetchProp(attribute_key, parent_sensor=parent_sensor)
+        t = CryptoInfoAdvFetchProp(attribute_key, parent_sensor=parent_sensor)
         self._extra_sensor_types.append(t)
         return t
 
     def get_fetch_type_from_str(self, fetch_type):
-        if isinstance(fetch_type, CryptoInfoFetchProp):
+        if isinstance(fetch_type, CryptoInfoAdvFetchProp):
             return fetch_type
 
         for t in self.fetch_types:
             if t == fetch_type:
                 return t
 
-        return CryptoInfoDataFetchType.PRICE_MAIN
+        return CryptoInfoAdvDataFetchType.PRICE_MAIN
 
     @classmethod
     def instance(cls):
@@ -197,10 +197,10 @@ class CryptoInfoEntityManager:
 
                     self._hashrate_sources[entity.cryptocurrency_name][entity.fetch_type] = entity.unique_id
 
-                if entity.fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
+                if entity.fetch_type == CryptoInfoAdvDataFetchType.CHAIN_BLOCK_TIME:
                     self._block_time_sources[entity.cryptocurrency_name] = entity.unique_id
 
-                if entity.fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+                if entity.fetch_type == CryptoInfoAdvDataFetchType.CHAIN_SUMMARY:
                     self._last_diff_sources[entity.cryptocurrency_name] = entity.unique_id
             else:
                 self._child_entities[entity.unique_id] = entity
@@ -271,7 +271,7 @@ class CryptoInfoEntityManager:
         return False
 
     def get_entity_data_key(self, entity):
-        if entity.fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+        if entity.fetch_type == CryptoInfoAdvDataFetchType.CHAIN_CONTROL:
             return f"{entity.fetch_type}_{entity.cryptocurrency_name}"
         else:
             return f"{entity.fetch_type}"

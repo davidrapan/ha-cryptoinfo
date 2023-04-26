@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Sensor component for Cryptoinfo
-Author: Johnny Visser
+Sensor component for Cryptoinfo Advanced
+Author: TheHoliestRoger
 """
 
 import voluptuous as vol
@@ -28,8 +28,8 @@ from .const.const import (
     CONF_HALVING_WINDOW,
 )
 
-from .manager import CryptoInfoEntityManager, CryptoInfoDataFetchType
-from .crypto_sensor import CryptoinfoSensor
+from .manager import CryptoInfoAdvEntityManager, CryptoInfoAdvDataFetchType
+from .crypto_sensor import CryptoinfoAdvSensor
 
 from homeassistant.components.sensor import (
     CONF_STATE_CLASS,
@@ -49,7 +49,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
 
-    _LOGGER.debug("Setup Cryptoinfo sensor")
+    _LOGGER.debug("Setup Cryptoinfo Advanced sensor")
 
     id_name = config.get(CONF_ID)
     unique_id = config.get(CONF_UNIQUE_ID)
@@ -73,7 +73,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     entities = []
 
     try:
-        new_sensor = CryptoinfoSensor(
+        new_sensor = CryptoinfoAdvSensor(
             hass,
             cryptocurrency_name,
             currency_name,
@@ -102,7 +102,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         return False
 
     async_add_entities(entities)
-    CryptoInfoEntityManager.instance().add_entities(entities)
+    CryptoInfoAdvEntityManager.instance().add_entities(entities)
 
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -117,8 +117,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_STATE_CLASS): STATE_CLASSES_SCHEMA,
         vol.Optional(
             CONF_API_MODE,
-            default=str(CryptoInfoDataFetchType.PRICE_MAIN)
-        ): vol.In(CryptoInfoEntityManager.instance().fetch_types),
+            default=str(CryptoInfoAdvDataFetchType.PRICE_MAIN)
+        ): vol.In(CryptoInfoAdvEntityManager.instance().fetch_types),
         vol.Optional(CONF_POOL_PREFIX, default=[""]): vol.All(
             cv.ensure_list,
             [cv.string],
@@ -132,7 +132,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                         vol.Optional(CONF_ID, default=""): cv.string,
                         vol.Optional(CONF_UNIQUE_ID): cv.string,
                         vol.Optional(CONF_STATE_CLASS): STATE_CLASSES_SCHEMA,
-                        vol.Required(CONF_EXTRA_SENSOR_PROPERTY): vol.In(CryptoinfoSensor.get_valid_extra_sensor_keys()),
+                        vol.Required(CONF_EXTRA_SENSOR_PROPERTY): vol.In(CryptoinfoAdvSensor.get_valid_extra_sensor_keys()),
                         vol.Optional(CONF_UNIT_OF_MEASUREMENT, default="$"): cv.string,
                     }
                 )

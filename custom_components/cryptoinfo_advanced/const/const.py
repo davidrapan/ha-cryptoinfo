@@ -1,7 +1,7 @@
 import logging
 from homeassistant.const import Platform
 
-DOMAIN = "cryptoinfo"
+DOMAIN = "cryptoinfo_advanced"
 PLATFORMS = [
     Platform.SENSOR,
 ]

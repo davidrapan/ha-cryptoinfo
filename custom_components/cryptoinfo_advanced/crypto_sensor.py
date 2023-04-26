@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Sensor component for Cryptoinfo
-Author: Johnny Visser
+Sensor component for Cryptoinfo Advanced
+Author: TheHoliestRoger
 """
 
 import aiohttp
@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 from .const.const import (
     _LOGGER,
+    DOMAIN,
     CONF_EXTRA_SENSOR_PROPERTY,
     SENSOR_PREFIX,
     ATTR_LAST_UPDATE,
@@ -81,7 +82,7 @@ from .const.const import (
     DAY_SECONDS,
 )
 
-from .manager import CryptoInfoEntityManager, CryptoInfoDataFetchType
+from .manager import CryptoInfoAdvEntityManager, CryptoInfoAdvDataFetchType
 from .utils import unit_to_multiplier
 
 from homeassistant.components.sensor import (
@@ -101,7 +102,7 @@ from homeassistant.helpers.template import Template
 from homeassistant.util import Throttle
 
 
-class CryptoinfoSensor(SensorEntity):
+class CryptoinfoAdvSensor(SensorEntity):
     def __init__(
         self,
         hass,
@@ -139,7 +140,7 @@ class CryptoinfoSensor(SensorEntity):
         self._difficulty_window = int(difficulty_window) if difficulty_window.isdigit() else DEFAULT_CHAIN_DIFFICULTY_WINDOW
         self._halving_window = int(halving_window) if halving_window.isdigit() else DEFAULT_CHAIN_HALVING_WINDOW
         self._internal_id_name = id_name if id_name is not None else ""
-        self._fetch_type = CryptoInfoEntityManager.instance().get_fetch_type_from_str(api_mode)
+        self._fetch_type = CryptoInfoAdvEntityManager.instance().get_fetch_type_from_str(api_mode)
         self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
         self._api_domain_name = api_domain_name if api_domain_name and len(api_domain_name) else None
         self._pool_name = pool_name if pool_name and len(pool_name) else None
@@ -236,7 +237,7 @@ class CryptoinfoSensor(SensorEntity):
         if self._difficulty is None:
             return None
 
-        best_hashrate = CryptoInfoEntityManager.instance().get_best_hashrate(self.cryptocurrency_name)
+        best_hashrate = CryptoInfoAdvEntityManager.instance().get_best_hashrate(self.cryptocurrency_name)
         return (self._difficulty * self._diff_multiplier) / best_hashrate
 
     @property
@@ -272,7 +273,7 @@ class CryptoinfoSensor(SensorEntity):
         if self.difficulty_retarget_seconds is None:
             return None
 
-        last_diff_timestamp = CryptoInfoEntityManager.instance().get_block_time(self.cryptocurrency_name)
+        last_diff_timestamp = CryptoInfoAdvEntityManager.instance().get_block_time(self.cryptocurrency_name)
         if last_diff_timestamp is None:
             return None
 
@@ -364,12 +365,12 @@ class CryptoinfoSensor(SensorEntity):
             ATTR_LAST_UPDATE: self._last_update,
         }
 
-        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_price_types:
+        if full_attr_force or self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_price_types:
             output_attrs[ATTR_BASE_PRICE] = self._base_price
             output_attrs[ATTR_24H_VOLUME] = self._24h_volume
             output_attrs[ATTR_24H_CHANGE] = self._24h_change
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.PRICE_MAIN:
             output_attrs[ATTR_1H_CHANGE] = self._1h_change
             output_attrs[ATTR_7D_CHANGE] = self._7d_change
             output_attrs[ATTR_30D_CHANGE] = self._30d_change
@@ -381,16 +382,16 @@ class CryptoinfoSensor(SensorEntity):
             output_attrs[ATTR_24H_HIGH] = self._24h_high
             output_attrs[ATTR_IMAGE_URL] = self._image_url
 
-        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_supply_types:
+        if full_attr_force or self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_supply_types:
             output_attrs[ATTR_CIRCULATING_SUPPLY] = self._circulating_supply
 
-        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_market_cap_types:
+        if full_attr_force or self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_market_cap_types:
             output_attrs[ATTR_MARKET_CAP] = self._market_cap
 
-        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_block_height_types:
+        if full_attr_force or self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_block_height_types:
             output_attrs[ATTR_BLOCK_HEIGHT] = self._block_height
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_SUMMARY:
             output_attrs[ATTR_DIFFICULTY] = self._difficulty
             output_attrs[ATTR_HASHRATE] = self._hashrate
             output_attrs[CONF_DIFF_MULTIPLIER] = self._diff_multiplier
@@ -398,17 +399,17 @@ class CryptoinfoSensor(SensorEntity):
             output_attrs[CONF_DIFFICULTY_WINDOW] = self._difficulty_window
             output_attrs[CONF_HALVING_WINDOW] = self._halving_window
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_CONTROL:
             output_attrs[ATTR_POOL_CONTROL_1000B] = self._pool_control_1000b
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.NOMP_POOL_STATS:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.NOMP_POOL_STATS:
             output_attrs[ATTR_WORKER_COUNT] = self._worker_count
             output_attrs[ATTR_LAST_BLOCK] = self._last_block
             output_attrs[ATTR_BLOCKS_PENDING] = self._blocks_pending
             output_attrs[ATTR_BLOCKS_CONFIRMED] = self._blocks_confirmed
             output_attrs[ATTR_BLOCKS_ORPHANED] = self._blocks_orphaned
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_STATS:
             output_attrs[ATTR_MEMPOOL_TX_COUNT] = self._mempool_tx_count
             output_attrs[ATTR_MEMPOOL_TOTAL_FEE] = self._mempool_total_fee
 
@@ -421,7 +422,7 @@ class CryptoinfoSensor(SensorEntity):
     def get_extra_sensor_attrs(self, full_attr_force=False, child_sensor=None):
         output_attrs = self.get_extra_state_attrs(full_attr_force=full_attr_force)
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_SUMMARY:
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_BLOCK_TIME_IN_SECONDS:
                 output_attrs[ATTR_BLOCK_TIME_IN_SECONDS] = self.block_time_in_seconds
@@ -458,14 +459,14 @@ class CryptoinfoSensor(SensorEntity):
             if child_sensor is None or child_sensor.attribute_key == ATTR_TOTAL_HALVINGS_TO_DATE:
                 output_attrs[ATTR_TOTAL_HALVINGS_TO_DATE] = self.total_halvings_to_date
 
-        if full_attr_force or self._fetch_type in CryptoInfoEntityManager.instance().fetch_hashrate_types:
+        if full_attr_force or self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_hashrate_types:
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_HASHRATE_CALC:
                 output_attrs[ATTR_HASHRATE_CALC] = self.hashrate_calc(
                     child_sensor.unit_of_measurement if child_sensor is not None else None
                 )
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_STATS:
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_SIZE_CALC:
                 output_attrs[ATTR_MEMPOOL_SIZE_CALC] = self.mempool_size_calc(
@@ -475,12 +476,12 @@ class CryptoinfoSensor(SensorEntity):
             if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_AVERAGE_FEE_PER_TX:
                 output_attrs[ATTR_MEMPOOL_AVERAGE_FEE_PER_TX] = self.mempool_average_fee_per_tx
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.PRICE_MAIN:
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_ALL_TIME_HIGH_DISTANCE:
                 output_attrs[ATTR_ALL_TIME_HIGH_DISTANCE] = self.all_time_high_distance
 
-        if full_attr_force or self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_CONTROL:
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_POOL_CONTROL_1000B_PERC:
                 output_attrs[ATTR_POOL_CONTROL_1000B_PERC] = self.pool_control_1000b_perc
@@ -493,7 +494,7 @@ class CryptoinfoSensor(SensorEntity):
 
     @classmethod
     def get_valid_extra_sensor_keys(cls):
-        empty_sensor = CryptoinfoSensor(None, *["" for x in range(6)])
+        empty_sensor = CryptoinfoAdvSensor(None, *["" for x in range(6)])
         keys = list(empty_sensor.all_extra_sensor_keys)
         del empty_sensor
 
@@ -510,7 +511,7 @@ class CryptoinfoSensor(SensorEntity):
         return base_keys[:]
 
     def _build_name(self):
-        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
+        if self._fetch_type not in CryptoInfoAdvEntityManager.instance().fetch_price_types:
             return (
                 SENSOR_PREFIX
                 + (self._internal_id_name if len(self._internal_id_name) > 0 else (
@@ -537,32 +538,32 @@ class CryptoinfoSensor(SensorEntity):
         return "".join(self.pool_prefixes)
 
     def _build_unique_id(self):
-        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
-            if self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+        if self._fetch_type not in CryptoInfoAdvEntityManager.instance().fetch_price_types:
+            if self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_CONTROL:
                 id_slug = f"{self._fetch_type.id_slug}_{self.pool_prefix_id}"
             else:
                 id_slug = f"{self._fetch_type.id_slug}"
-            return "{0}{1}{2}_{3}".format(
-                self.cryptocurrency_name, self.multiplier, self._update_frequency.seconds, id_slug,
+            return "{0}_{1}{2}{3}_{4}".format(
+                DOMAIN, self.cryptocurrency_name, self.multiplier, self._update_frequency.seconds, id_slug,
             )
 
         else:
-            return "{0}{1}{2}{3}".format(
-                self.cryptocurrency_name, self.currency_name, self.multiplier, self._update_frequency.seconds
+            return "{0}_{1}{2}{3}{4}".format(
+                DOMAIN, self.cryptocurrency_name, self.currency_name, self.multiplier, self._update_frequency.seconds
             )
 
     def _build_device_class(self):
-        if self._fetch_type in CryptoInfoEntityManager.instance().fetch_price_types:
+        if self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_price_types:
             return SensorDeviceClass.MONETARY
 
-        elif self._fetch_type in CryptoInfoEntityManager.instance().fetch_time_types:
+        elif self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_time_types:
             return SensorDeviceClass.DURATION
 
         else:
             return None
 
     def check_valid_config(self, raise_error=True):
-        if self._fetch_type == CryptoInfoDataFetchType.NOMP_POOL_STATS:
+        if self._fetch_type == CryptoInfoAdvDataFetchType.NOMP_POOL_STATS:
 
             if self._api_domain_name is None:
                 _LOGGER.error(f"No API domain name supplied for sensor {self.name}")
@@ -580,7 +581,7 @@ class CryptoinfoSensor(SensorEntity):
 
                 return False
 
-        if self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
+        if self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_STATS:
 
             if self.cryptocurrency_name.lower() not in ['btc', 'bitcoin']:
                 _LOGGER.error(f"Sensor {self.name} is not BTC, mempool is only supported for BTC.")
@@ -594,7 +595,7 @@ class CryptoinfoSensor(SensorEntity):
 
     def _log_api_error(self, error, tb):
         _LOGGER.error(
-            f"Cryptoinfo error fetching update for {self.name}: "
+            f"CryptoinfoAdvanced error fetching update for {self.name}: "
             + f"{type(error).__name__}: {error}"
         )
         _LOGGER.error(tb)
@@ -719,7 +720,7 @@ class CryptoinfoSensor(SensorEntity):
         return int(api_data["vsize"])
 
     async def _fetch_price_data_main(self, api_data=None):
-        if not self._fetch_type == CryptoInfoDataFetchType.PRICE_MAIN:
+        if not self._fetch_type == CryptoInfoAdvDataFetchType.PRICE_MAIN:
             raise ValueError()
 
         price_data, api_data = await self._async_api_fetch(
@@ -753,7 +754,7 @@ class CryptoinfoSensor(SensorEntity):
         return self.data
 
     async def _fetch_price_data_alternate(self, api_data=None):
-        if self._fetch_type not in CryptoInfoEntityManager.instance().fetch_price_types:
+        if self._fetch_type not in CryptoInfoAdvEntityManager.instance().fetch_price_types:
             raise ValueError()
 
         price_data, api_data = await self._async_api_fetch(
@@ -826,7 +827,7 @@ class CryptoinfoSensor(SensorEntity):
             encoding="latin-1"
         )
 
-        if control_data is not None:
+        if control_data is not None and api_data is not None:
             pool_data = self._extract_data_chain_control_special(api_data)
             self._update_all_properties(
                 state=int(pool_data["nb100"]),
@@ -863,7 +864,7 @@ class CryptoinfoSensor(SensorEntity):
         try:
             block_height = int(block_height_arg)
         except Exception:
-            block_height = CryptoInfoEntityManager.instance().get_last_diff(self.cryptocurrency_name)
+            block_height = CryptoInfoAdvEntityManager.instance().get_last_diff(self.cryptocurrency_name)
 
             if block_height_arg is not None:
                 _LOGGER.error("Error fetching " + self.name + " - Invalid block height arg supplied.")
@@ -1086,7 +1087,7 @@ class CryptoinfoSensor(SensorEntity):
             attribute_key = conf.get(CONF_EXTRA_SENSOR_PROPERTY)
             unit_of_measurement = conf.get(CONF_UNIT_OF_MEASUREMENT)
             child_sensors.append(
-                CryptoinfoChildSensor(
+                CryptoinfoAdvChildSensor(
                     self,
                     id_name,
                     unique_id,
@@ -1103,29 +1104,29 @@ class CryptoinfoSensor(SensorEntity):
     async def _async_update(self):
         api_data = None
 
-        if not CryptoInfoEntityManager.instance().should_fetch_entity(self):
-            api_data = CryptoInfoEntityManager.instance().fetch_cached_entity_data(self)
+        if not CryptoInfoAdvEntityManager.instance().should_fetch_entity(self):
+            api_data = CryptoInfoAdvEntityManager.instance().fetch_cached_entity_data(self)
 
         try:
-            if self._fetch_type == CryptoInfoDataFetchType.DOMINANCE:
+            if self._fetch_type == CryptoInfoAdvDataFetchType.DOMINANCE:
                 api_data = await self._fetch_dominance(api_data)
 
-            elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_SUMMARY:
+            elif self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_SUMMARY:
                 api_data = await self._fetch_chain_summary(api_data)
 
-            elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_CONTROL:
+            elif self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_CONTROL:
                 api_data = await self._fetch_chain_control(api_data)
 
-            elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_ORPHANS:
+            elif self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_ORPHANS:
                 api_data = await self._fetch_chain_orphans(api_data)
 
-            elif self._fetch_type == CryptoInfoDataFetchType.CHAIN_BLOCK_TIME:
+            elif self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_BLOCK_TIME:
                 api_data = await self._fetch_chain_block_time(api_data)
 
-            elif self._fetch_type == CryptoInfoDataFetchType.NOMP_POOL_STATS:
+            elif self._fetch_type == CryptoInfoAdvDataFetchType.NOMP_POOL_STATS:
                 api_data = await self._fetch_nomp_pool_stats(api_data)
 
-            elif self._fetch_type == CryptoInfoDataFetchType.MEMPOOL_STATS:
+            elif self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_STATS:
                 api_data = await self._fetch_mempool_stats(api_data)
 
             else:
@@ -1138,10 +1139,10 @@ class CryptoinfoSensor(SensorEntity):
                 self._update_all_properties(available=False)
                 return
 
-        CryptoInfoEntityManager.instance().set_cached_entity_data(self, api_data)
+        CryptoInfoAdvEntityManager.instance().set_cached_entity_data(self, api_data)
 
 
-class CryptoinfoChildSensor(CryptoinfoSensor):
+class CryptoinfoAdvChildSensor(CryptoinfoAdvSensor):
     def __init__(
         self,
         parent_sensor,
@@ -1163,7 +1164,7 @@ class CryptoinfoChildSensor(CryptoinfoSensor):
             id_name=id_name,
             unique_id=unique_id,
             state_class=state_class,
-            api_mode=CryptoInfoEntityManager.instance().get_extra_sensor_fetch_type_from_str(parent_sensor, attribute_key),
+            api_mode=CryptoInfoAdvEntityManager.instance().get_extra_sensor_fetch_type_from_str(parent_sensor, attribute_key),
             pool_prefix=parent_sensor.pool_prefixes,
             fetch_args=parent_sensor._fetch_args,
             extra_sensors="",

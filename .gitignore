@@ -7,7 +7,8 @@
 !pyproject.toml
 !README.md
 !custom_components/
-!custom_components/cryptoinfo/*
+!custom_components/cryptoinfo_advanced/*
+!custom_components/cryptoinfo_advanced/**/*
 !custom_components/*
 .DS_Store
 __pycache__

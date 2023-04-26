@@ -10,11 +10,11 @@ template:
           {{ (states('sensor.cryptoinfo_bitcoin_usd')|float * owned_coin) | round(5) }}
 
 
-# All Cryptoinfo Sensor Examples
+# All Cryptoinfo Advanced Sensor Examples
 sensor:
 
   # "Wallet" Sensor - API: CoinGecko
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "Main Wallet"
     cryptocurrency_name: "bitcoin"
     currency_name: "eur"
@@ -28,7 +28,7 @@ sensor:
 
 
   # BTC Price USD - API: CoinGecko
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Price"
     cryptocurrency_name: "bitcoin"
     currency_name: "usd"
@@ -42,7 +42,7 @@ sensor:
 
 
   # BTC Price GBP - API: CoinGecko
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Price GBP"
     cryptocurrency_name: "bitcoin"
     currency_name: "gbp"
@@ -51,7 +51,7 @@ sensor:
 
 
   # BTC Dom - API: CoinGecko
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Dominance"
     cryptocurrency_name: "btc"
     unit_of_measurement: "%"
@@ -60,7 +60,7 @@ sensor:
 
 
   # ETH Dom - API: CoinGecko
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "ETH Dominance"
     cryptocurrency_name: "eth"
     unit_of_measurement: "%"
@@ -69,7 +69,7 @@ sensor:
 
 
   # BTC Chain Summary - API: CryptoID
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Height"
     cryptocurrency_name: "btc"
     unit_of_measurement: "Blks"
@@ -115,14 +115,14 @@ sensor:
 
   # BTC Last Difficulty timestamp - API: CryptoID
   # Requires chain_summary sensor to be enabled or supplied a height to fetch as below
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Last Diff Timestamp"
     cryptocurrency_name: "btc"
     unit_of_measurement: "s"
     update_frequency: 1
     api_mode: "chain_block_time"
   # BTC Last Difficulty timestamp sensor with template
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Last Diff Timestamp Templated"
     cryptocurrency_name: "btc"
     unit_of_measurement: "s"
@@ -132,7 +132,7 @@ sensor:
 
 
   # BTC Orphaned Blocks Today - API: CryptoID
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Orphans Today"
     cryptocurrency_name: "btc"
     unit_of_measurement: "Blks"
@@ -142,7 +142,7 @@ sensor:
 
 
   # BTC Hashrate Control Sensors
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Foundry USA Hash Control 100 Blocks"
     unique_id: "btc_cco_bc1qxh"
     cryptocurrency_name: "btc"
@@ -152,7 +152,7 @@ sensor:
     pool_prefix:
       - "FoundryUSA"
       - "bc1qxh"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC F2Pool Hash Control 100 Blocks"
     unique_id: "btc_cco_1KFHE7"
     cryptocurrency_name: "btc"
@@ -162,7 +162,7 @@ sensor:
     pool_prefix:
       - "F2Pool"
       - "1KFHE7"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Binance Hash Control 100 Blocks"
     unique_id: "btc_cco_1Q8QR5"
     cryptocurrency_name: "btc"
@@ -173,7 +173,7 @@ sensor:
       - "Binance"
       - "1Q8QR5"
       - "3L8Ck6"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC AntPool Hash Control 100 Blocks"
     unique_id: "btc_cco_AntPool38XnPv"
     cryptocurrency_name: "btc"
@@ -183,7 +183,7 @@ sensor:
     pool_prefix:
       - "AntPool"
       - "38XnPv"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC ViaBTC Hash Control 100 Blocks"
     unique_id: "btc_cco_ViaBTC"
     cryptocurrency_name: "btc"
@@ -193,7 +193,7 @@ sensor:
     pool_prefix:
       - "ViaBTC"
       - "18cBEM"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC BTC.Com Hash Control 100 Blocks"
     unique_id: "btc_cco_36cWgj"
     cryptocurrency_name: "btc"
@@ -203,7 +203,7 @@ sensor:
     pool_prefix:
       - "BTC.Com"
       - "36cWgj"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC MaraPool Hash Control 100 Blocks"
     unique_id: "btc_cco_15MdAH"
     cryptocurrency_name: "btc"
@@ -213,7 +213,7 @@ sensor:
     pool_prefix:
       - "MaraPool"
       - "15MdAH"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Poolin Hash Control 100 Blocks"
     unique_id: "btc_cco_poolin"
     cryptocurrency_name: "btc"
@@ -223,7 +223,7 @@ sensor:
     pool_prefix:
       - "Poolin"
       - "33TbzA"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Pegapool Hash Control 100 Blocks"
     unique_id: "btc_cco_pegapool"
     cryptocurrency_name: "btc"
@@ -232,7 +232,7 @@ sensor:
     api_mode: "chain_control"
     pool_prefix:
       - "3GRKUV"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Luxor Hash Control 100 Blocks"
     unique_id: "btc_cco_luxor"
     cryptocurrency_name: "btc"
@@ -241,7 +241,7 @@ sensor:
     api_mode: "chain_control"
     pool_prefix:
       - "39bitU"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC EMCD.io Hash Control 100 Blocks"
     unique_id: "btc_cco_emcdio"
     cryptocurrency_name: "btc"
@@ -250,7 +250,7 @@ sensor:
     api_mode: "chain_control"
     pool_prefix:
       - "3LwoXD"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Slushpool Hash Control 100 Blocks"
     unique_id: "btc_cco_slush"
     cryptocurrency_name: "btc"
@@ -259,7 +259,7 @@ sensor:
     api_mode: "chain_control"
     pool_prefix:
       - "1CK6KH"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC CarbonNegative Hash Control 100 Blocks"
     unique_id: "btc_cco_carbonnegative"
     cryptocurrency_name: "btc"
@@ -268,7 +268,7 @@ sensor:
     api_mode: "chain_control"
     pool_prefix:
       - "3KZDwm"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC SBICrypto Hash Control 100 Blocks"
     unique_id: "btc_cco_sbicrypto"
     cryptocurrency_name: "btc"
@@ -277,7 +277,7 @@ sensor:
     api_mode: "chain_control"
     pool_prefix:
       - "bc1qte"
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Ultimus Hash Control 100 Blocks"
     unique_id: "btc_cco_ultimus"
     cryptocurrency_name: "btc"
@@ -289,7 +289,7 @@ sensor:
 
 
   # BTC Mempool - API: Mempool.space
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "BTC Mempool Size"
     cryptocurrency_name: "btc"
     unit_of_measurement: "vB"
@@ -309,7 +309,7 @@ sensor:
 
 
   # ROGER NOMP Pool stats - API: NOMP (Any NOMP based pool)
-  - platform: cryptoinfo
+  - platform: cryptoinfo_advanced
     id: "ROGER Pool Hashrate"
     cryptocurrency_name: "roger"
     unit_of_measurement: "H"

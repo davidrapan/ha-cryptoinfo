@@ -1,8 +1,8 @@
-## Home Assistant sensor component for cryptocurrencies
+## Cryptoinfo Advanced - Cryptocurrency Home Assistant sensor component
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 ### Powered by CoinGecko, CryptoID, Mempool.space APIs
 
-#### Provides Home Assistant sensors for all cryptocurrencies supported by CoinGecko
+#### Provides Home Assistant sensors for all cryptocurrencies offered by the supporting services
 
 If you like my work, please buy me an aubergine or donate some BTC.
 
@@ -11,19 +11,22 @@ If you like my work, please buy me an aubergine or donate some BTC.
 bc1qpq4djuxgxsk0zrkg9y2rye8fyz7e0mjx64gzq0
 </details>
 
+This project originally started from [Cryptoinfo](https://github.com/heyajohnny/cryptoinfo), adding lot's more features.
+
 ### Installation step 1:
-There are 2 ways to install cryptoinfo:
-1. Copy the files in the /custom_components/cryptoinfo/ folder to: [homeassistant]/config/custom_components/cryptoinfo/
+There are 2 ways to install Cryptoinfo Advanced:
+1. Download 'Cryptoinfo Advanced' from the HACS store
+2. Copy the files in the /custom_components/cryptoinfo_advanced/ folder to: [homeassistant]/config/custom_components/cryptoinfo_advanced/
 
 ### Installation step 2:
-The next step is to add cryptoinfo to your configuration.yaml. You can do that in 2 ways:
+The next step is to add cryptoinfo_advanced to your configuration.yaml. You can do that in 2 ways:
 1. Copy and paste the values from this [configuration.yaml](https://github.com/TheHolyRoger/hass-cryptoinfo/blob/master/example/configuration.yaml) and adjust it according to your needs
 2. Copy and paste the values (and adjust according to your needs) from the configutation you see next
 
 Example config:
 ```Configuration.yaml:
   sensor:
-    - platform: cryptoinfo
+    - platform: cryptoinfo_advanced
       id: "main wallet"                (optional, default = '') add some extra naming to the sensor
       cryptocurrency_name: "bitcoin"  (default = "bitcoin")
       currency_name: "eur"             (default = "usd")
