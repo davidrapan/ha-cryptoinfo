@@ -27,3 +27,4 @@ Version: 0.2.4 20230423 - Add calculated difficulty and mempool size child senso
 Version: 0.2.5 20230425 - Switch to asyncio platform setup/aiohttp, add reload service, halving sensors.
 Version: 0.2.6 20230425 - Add mempool avg fee per TX child sensor
 Version: 0.3.0 20230426 - Rename to Cryptoinfo Advanced
+Version: 0.3.1 20230426 - Fixes for HACS/HASS requirements
