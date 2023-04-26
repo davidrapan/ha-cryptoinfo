@@ -786,7 +786,7 @@ class CryptoinfoSensor(SensorEntity):
 
         if dominance_data is not None:
             self._update_all_properties(
-                state=round(dominance_data, 1),
+                state=round(dominance_data, 2),
                 market_cap=api_data["total_market_cap"][self.cryptocurrency_name]
             )
 
