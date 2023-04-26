@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 
 from .const.const import (
     _LOGGER,
-    DOMAIN,
     CONF_EXTRA_SENSOR_PROPERTY,
     SENSOR_PREFIX,
     ATTR_LAST_UPDATE,
@@ -543,13 +542,13 @@ class CryptoinfoAdvSensor(SensorEntity):
                 id_slug = f"{self._fetch_type.id_slug}_{self.pool_prefix_id}"
             else:
                 id_slug = f"{self._fetch_type.id_slug}"
-            return "{0}_{1}{2}{3}_{4}".format(
-                DOMAIN, self.cryptocurrency_name, self.multiplier, self._update_frequency.seconds, id_slug,
+            return "{0}{1}{2}_{3}".format(
+                self.cryptocurrency_name, self.multiplier, self._update_frequency.seconds, id_slug,
             )
 
         else:
-            return "{0}_{1}{2}{3}{4}".format(
-                DOMAIN, self.cryptocurrency_name, self.currency_name, self.multiplier, self._update_frequency.seconds
+            return "{0}{1}{2}{3}".format(
+                self.cryptocurrency_name, self.currency_name, self.multiplier, self._update_frequency.seconds
             )
 
     def _build_device_class(self):
@@ -1069,7 +1068,7 @@ class CryptoinfoAdvSensor(SensorEntity):
         for sensor in self._child_sensors:
             sensor._update()
 
-    def _get_child_sensors(self):
+    def init_child_sensors(self):
         child_sensors = list()
 
         if self._child_sensor_config is None or not len(self._child_sensor_config):
@@ -1097,7 +1096,7 @@ class CryptoinfoAdvSensor(SensorEntity):
                 )
             )
 
-        self._child_sensors.extend(child_sensors)
+        self._child_sensors = child_sensors
 
         return child_sensors
 

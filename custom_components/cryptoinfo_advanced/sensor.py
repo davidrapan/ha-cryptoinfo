@@ -96,7 +96,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         )
         if new_sensor.check_valid_config(False):
             entities.append(new_sensor)
-            entities.extend(new_sensor._get_child_sensors())
+            entities.extend(new_sensor.init_child_sensors())
     except Exception as error:
         _LOGGER.error(f"{type(error).__name__}: {error}")
         return False
