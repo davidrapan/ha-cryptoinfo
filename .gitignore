@@ -2,6 +2,8 @@
 !.gitignore
 !.flake8
 !.pre-commit-config.yaml
+!.github
+!.github/**/*
 !hacs.json
 !LICENSE
 !pyproject.toml
