@@ -192,6 +192,14 @@ class CryptoinfoAdvSensor(SensorEntity):
         return self._is_child_sensor
 
     @property
+    def cryptocurrency_friendly_name(self):
+        return (
+            self.cryptocurrency_name.upper()
+            if len(self.cryptocurrency_name) <= 6
+            else self.cryptocurrency_name.title()
+        )
+
+    @property
     def update_frequency(self):
         return self._update_frequency
 
@@ -514,22 +522,16 @@ class CryptoinfoAdvSensor(SensorEntity):
             return (
                 SENSOR_PREFIX
                 + (self._internal_id_name if len(self._internal_id_name) > 0 else (
-                    (
-                        self.cryptocurrency_name.upper()
-                        if len(self.cryptocurrency_name) <= 6
-                        else self.cryptocurrency_name.title()
-                    )
-                    + " " + self._fetch_type.name
+                    "{0} {1}".format(self.cryptocurrency_friendly_name, self._fetch_type.name)
                 ))
             )
 
         else:
             return (
                 SENSOR_PREFIX
-                + (self._internal_id_name + " " if len(self._internal_id_name) > 0 else "")
-                + self.cryptocurrency_name
-                + " "
-                + self.currency_name
+                + (self._internal_id_name if len(self._internal_id_name) > 0 else (
+                    "{0} Price {1}".format(self.cryptocurrency_name.title(), self.currency_name.upper())
+                ))
             )
 
     @property
