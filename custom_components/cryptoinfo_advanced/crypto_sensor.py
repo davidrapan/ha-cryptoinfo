@@ -56,6 +56,7 @@ from .const.const import (
     ATTR_BLOCK_TIME_IN_SECONDS,
     ATTR_MEMPOOL_TX_COUNT,
     ATTR_MEMPOOL_TOTAL_FEE,
+    ATTR_MEMPOOL_TOTAL_FEE_CALC,
     ATTR_MEMPOOL_SIZE_CALC,
     ATTR_MEMPOOL_AVERAGE_FEE_PER_TX,
     API_BASE_URL_COINGECKO,
@@ -79,10 +80,11 @@ from .const.const import (
     DEFAULT_CHAIN_BLOCK_TIME_MINS,
     DEFAULT_CHAIN_HALVING_WINDOW,
     DAY_SECONDS,
+    PROPERTY_POOL_CONTROL_REMAINING,
 )
 
 from .manager import CryptoInfoAdvEntityManager, CryptoInfoAdvDataFetchType
-from .utils import unit_to_multiplier
+from .utils import unit_to_multiplier, currency_to_multiplier
 
 from homeassistant.components.sensor import (
     CONF_STATE_CLASS,
@@ -353,6 +355,12 @@ class CryptoinfoAdvSensor(SensorEntity):
 
         return int(self._mempool_total_fee / self._mempool_tx_count)
 
+    def mempool_total_fee_calc(self, unit_of_measurement):
+        if self._mempool_total_fee is None:
+            return None
+
+        return round(float(self._mempool_total_fee) / currency_to_multiplier(unit_of_measurement), 4)
+
     @property
     def all_time_high_distance(self):
         if self._all_time_high is None or self.state is None:
@@ -477,6 +485,11 @@ class CryptoinfoAdvSensor(SensorEntity):
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_SIZE_CALC:
                 output_attrs[ATTR_MEMPOOL_SIZE_CALC] = self.mempool_size_calc(
+                    child_sensor.unit_of_measurement if child_sensor is not None else None
+                )
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_TOTAL_FEE_CALC:
+                output_attrs[ATTR_MEMPOOL_TOTAL_FEE_CALC] = self.mempool_total_fee_calc(
                     child_sensor.unit_of_measurement if child_sensor is not None else None
                 )
 
@@ -820,6 +833,17 @@ class CryptoinfoAdvSensor(SensorEntity):
         return self.data
 
     async def _fetch_chain_control(self, api_data=None):
+        if len(self.pool_prefixes) == 1 and PROPERTY_POOL_CONTROL_REMAINING in self.pool_prefixes:
+            (remaining_control_100, remaining_control_1000) = CryptoInfoAdvEntityManager.instance(
+            ).get_remaining_hash_control(self.cryptocurrency_name)
+
+            self._update_all_properties(
+                state=remaining_control_100,
+                pool_control_1000b=remaining_control_1000,
+            )
+
+            return self.data
+
         control_data, api_data = await self._async_api_fetch(
             api_data,
             API_ENDPOINT_CHAIN_CONTROL.format(API_BASE_URL_CRYPTOID, self.cryptocurrency_name),
@@ -830,6 +854,10 @@ class CryptoinfoAdvSensor(SensorEntity):
 
         if control_data is not None and api_data is not None:
             pool_data = self._extract_data_chain_control_special(api_data)
+
+            if pool_data is None:
+                raise ValueError()
+
             self._update_all_properties(
                 state=int(pool_data["nb100"]),
                 pool_control_1000b=pool_data["nb1000"],

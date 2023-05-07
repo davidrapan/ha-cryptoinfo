@@ -150,7 +150,7 @@ This will return the current `height` of the blockchain in blocks.
 | --- | ------------------- |
 | circulating_supply | This will return the circulating supply of the `cryptocurrency_name` |
 | hashrate | This will return the hashrate of the `cryptocurrency_name` |
-| difficulty | This will return the hashrate of the `cryptocurrency_name` |
+| difficulty | This will return the difficulty of the `cryptocurrency_name` |
 | diff_multiplier | This will return the configured diff_multiplier of the `cryptocurrency_name` |
 | block_time_minutes | This will return the configured block_time_minutes of the `cryptocurrency_name` |
 | difficulty_window | This will return the configured difficulty_window of the `cryptocurrency_name` |
@@ -169,18 +169,18 @@ This will return the current `height` of the blockchain in blocks.
 
 | Property | Description |
 | --- | ------------------- |
-| difficulty_calc |  |
-| hashrate_calc |  |
-| block_time_in_seconds |  |
-| difficulty_block_progress |  |
-| difficulty_retarget_height |  |
-| difficulty_retarget_seconds |  |
-| difficulty_retarget_percent_change |  |
-| difficulty_retarget_estimated_diff |  |
-| halving_block_progress |  |
-| halving_blocks_remaining |  |
-| next_halving_height |  |
-| total_halvings_to_date |  |
+| difficulty_calc | This sensor will return the difficulty of the `cryptocurrency_name` calculated with the configured `unit_of_measurement`. |
+| hashrate_calc | This sensor will return the hashrate of the `cryptocurrency_name` calculated with the configured `unit_of_measurement`. |
+| block_time_in_seconds | This sensor will return the estimated time between blocks in seconds of the `cryptocurrency_name`. |
+| difficulty_block_progress | This sensor will return the current difficulty block progress of the `cryptocurrency_name`. |
+| difficulty_retarget_height | This sensor will return the next difficulty retarget height of the `cryptocurrency_name`. |
+| difficulty_retarget_seconds | This sensor will return the estimated seconds until the next difficulty retarget of the `cryptocurrency_name`. |
+| difficulty_retarget_percent_change | This sensor will return the estimated difficulty retarget percent change of the `cryptocurrency_name`. |
+| difficulty_retarget_estimated_diff | This sensor will return the estimated difficulty at the next retarget window of the `cryptocurrency_name`. |
+| halving_block_progress | This sensor will return the progress through the current halving window of the `cryptocurrency_name`. |
+| halving_blocks_remaining | This sensor will return the blocks remaining in the current halving window of the `cryptocurrency_name`. |
+| next_halving_height | This sensor will return the next halving block height of the `cryptocurrency_name`. |
+| total_halvings_to_date | This sensor will return the total halvings to date of the `cryptocurrency_name`. |
 
 
 ### Blockchain Hashrate Control - `chain_control`
@@ -197,13 +197,13 @@ This will return the total blocks mined in last 100 for the configured `pool_pre
 
 | Parameter | Default  | Description |
 | --- | -- | ------------------- |
-| pool_prefix | `None` | The pool prefix(es) to be included in the sensor. (accepts lists) |
+| pool_prefix | `None` | The pool prefix(es) to be included in the sensor If set to `remaining_percentage` it will calculate the total unknown pool control stats. (accepts lists) |
 
 #### Extra Sensor Properties
 
 | Property | Description |
 | --- | ------------------- |
-| pool_control_1000b_perc |  |
+| pool_control_1000b_perc | This sensor will return the percentage of the total blocks mined in last 1000 for the configured `pool_prefix` and `cryptocurrency_name`.|
 
 
 ### Blockchain Orphans - `chain_orphans`
@@ -255,26 +255,27 @@ This will return the current `hashrate` of the NOMP pool specified with `api_dom
 
 | Property | Description |
 | --- | ------------------- |
-| hashrate_calc |  |
+| hashrate_calc | This sensor will return the hashrate of the pool calculated with the configured `unit_of_measurement`. |
 
 
-### Market Dominance - `mempool_stats`
+### Mempool Stats - `mempool_stats` (BTC ONLY)
 #### State
-This will return 
+This will return the total size in vB of the mempool.
 
 #### Attributes
 
 | Attribute | Source |
 | --- | ------------------- |
 | mempool_tx_count | This will return the total TX count in the mempool. |
-| mempool_total_fee | This will return the total fee of all TXs in the mempool. |
+| mempool_total_fee | This will return the total fee of all TXs in the mempool in satoshis. |
 
 #### Extra Sensor Properties
 
 | Property | Description |
 | --- | ------------------- |
-| mempool_size_calc |  |
-| mempool_average_fee_per_tx |  |
+| mempool_size_calc | This sensor will return the total size of the mempool calculated with the configured `unit_of_measurement`. |
+| mempool_total_fee_calc | This sensor will return the total fee of all TXs in the mempool calculated with the configured `unit_of_measurement`. |
+| mempool_average_fee_per_tx | This sensor will return the average fee per TX in satoshis for the mempool. |
 
 
 ## Issues and new functionality

@@ -1,5 +1,9 @@
 import time
 
+from .const.const import (
+    PROPERTY_POOL_CONTROL_REMAINING,
+)
+
 
 class CryptoInfoAdvFetchProp:
     def __init__(self, slug, parent_sensor=None):
@@ -88,6 +92,7 @@ class CryptoInfoAdvEntityManager:
         self._hashrate_sources = dict()
         self._block_time_sources = dict()
         self._last_diff_sources = dict()
+        self._hash_control_sources = dict()
 
     @property
     def fetch_types(self):
@@ -202,6 +207,12 @@ class CryptoInfoAdvEntityManager:
 
                 if entity.fetch_type == CryptoInfoAdvDataFetchType.CHAIN_SUMMARY:
                     self._last_diff_sources[entity.cryptocurrency_name] = entity.unique_id
+
+                if entity.fetch_type == CryptoInfoAdvDataFetchType.CHAIN_CONTROL:
+                    if entity.cryptocurrency_name not in self._hash_control_sources:
+                        self._hash_control_sources[entity.cryptocurrency_name] = set()
+                    if PROPERTY_POOL_CONTROL_REMAINING not in entity.pool_prefixes:
+                        self._hash_control_sources[entity.cryptocurrency_name].add(entity.unique_id)
             else:
                 self._child_entities[entity.unique_id] = entity
 
@@ -211,6 +222,32 @@ class CryptoInfoAdvEntityManager:
     def get_fetch_frequency(self, fetch_type):
         tdelta = self._fetch_frequency.get(fetch_type)
         return tdelta.seconds if tdelta else 0
+
+    def get_remaining_hash_control(self, cryptocurrency_name):
+        if cryptocurrency_name not in self._hash_control_sources:
+            return None
+
+        sensor_found = False
+        known_hash_control_100 = 0
+        known_hash_control_1000 = 0
+
+        for entity_id in self._hash_control_sources[cryptocurrency_name]:
+            source = self._entities[entity_id]
+
+            if source.state is None:
+                continue
+
+            sensor_found = True
+
+            known_hash_control_100 += int(source.state)
+
+            if source._pool_control_1000b is not None:
+                known_hash_control_1000 += int(source._pool_control_1000b)
+
+        if not sensor_found:
+            return None
+
+        return (int(100 - known_hash_control_100), int(1000 - known_hash_control_1000))
 
     def get_best_hashrate(self, cryptocurrency_name):
         if cryptocurrency_name not in self._hashrate_sources:
