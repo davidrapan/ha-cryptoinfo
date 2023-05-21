@@ -29,3 +29,4 @@ Version: 0.2.6 20230425 - Add mempool avg fee per TX child sensor
 Version: 0.3.0 20230426 - Rename to Cryptoinfo Advanced
 Version: 0.3.1 20230426 - Fixes for HACS/HASS requirements
 Version: 0.3.2 20230507 - Add total unknown hash control sensor to chain control, mempool total fee calculated.
+Version: 0.3.3 20230521 - Fix a few errors during updates.

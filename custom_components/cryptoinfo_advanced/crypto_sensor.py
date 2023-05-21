@@ -666,7 +666,7 @@ class CryptoinfoAdvSensor(SensorEntity):
     def _extract_data_chain_control_primary(self, api_data):
         return True
 
-    def _extract_data_chain_control_special(self, json_data):
+    def _extract_data_chain_control_special(self, json_data, ignore_not_found=True):
         pool_data = None
         data_100_blk = 0
         data_1000_blk = 0
@@ -678,9 +678,9 @@ class CryptoinfoAdvSensor(SensorEntity):
                         data_100_blk += pool["nb100"]
                         data_1000_blk += pool["nb1000"]
 
-        if pool_data is not None:
+        if ignore_not_found or pool_data is not None:
             return {
-                **pool_data,
+                **(pool_data if pool_data is not None else {}),
                 "nb100": data_100_blk,
                 "nb1000": data_1000_blk,
             }
@@ -688,8 +688,8 @@ class CryptoinfoAdvSensor(SensorEntity):
         return None
 
     def _extract_data_chain_control_full(self, json_data):
-        if self._extract_data_chain_control_special(json_data) is None:
-            raise ValueError(f"Pool Prefixes {self.pool_prefixes} not found")
+        if self._extract_data_chain_control_special(json_data, ignore_not_found=False) is None:
+            _LOGGER.debug(f"Pool Prefixes {self.pool_prefixes} not found")
 
         return json_data
 
@@ -896,9 +896,9 @@ class CryptoinfoAdvSensor(SensorEntity):
             block_height = CryptoInfoAdvEntityManager.instance().get_last_diff(self.cryptocurrency_name)
 
             if block_height_arg is not None:
-                _LOGGER.error("Error fetching " + self.name + " - Invalid block height arg supplied.")
+                _LOGGER.warning("Error fetching " + self.name + " - Invalid block height arg supplied.")
             elif block_height is None:
-                _LOGGER.error("Error fetching " + self.name + " - No data from Chain Summary sensor.")
+                _LOGGER.warning("Error fetching " + self.name + " - No data from Chain Summary sensor.")
 
         if block_height is None:
             raise ValueError()

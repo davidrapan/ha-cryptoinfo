@@ -225,7 +225,7 @@ class CryptoInfoAdvEntityManager:
 
     def get_remaining_hash_control(self, cryptocurrency_name):
         if cryptocurrency_name not in self._hash_control_sources:
-            return None
+            return (None, None)
 
         sensor_found = False
         known_hash_control_100 = 0
@@ -245,7 +245,7 @@ class CryptoInfoAdvEntityManager:
                 known_hash_control_1000 += int(source._pool_control_1000b)
 
         if not sensor_found:
-            return None
+            return (None, None)
 
         return (int(100 - known_hash_control_100), int(1000 - known_hash_control_1000))
 
