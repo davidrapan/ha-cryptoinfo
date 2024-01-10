@@ -76,6 +76,15 @@ ATTR_MEMPOOL_FEES_30MIN = "mempool_fees_30min"
 ATTR_MEMPOOL_FEES_60MIN = "mempool_fees_60min"
 ATTR_MEMPOOL_FEES_ECO = "mempool_fees_eco"
 ATTR_MEMPOOL_FEES_MINIMUM = "mempool_fees_minimum"
+ATTR_MEMPOOL_NEXT_BLOCK_SIZE = "mempool_next_block_size"
+ATTR_MEMPOOL_NEXT_BLOCK_SIZE_CALC = "mempool_next_block_size_calc"
+ATTR_MEMPOOL_NEXT_BLOCK_TX_COUNT = "mempool_next_block_tx_count"
+ATTR_MEMPOOL_NEXT_BLOCK_TOTAL_FEE = "mempool_next_block_total_fee"
+ATTR_MEMPOOL_NEXT_BLOCK_TOTAL_FEE_CALC = "mempool_next_block_total_fee_calc"
+ATTR_MEMPOOL_NEXT_BLOCK_MEDIAN_FEE = "mempool_next_block_median_fee"
+ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_MIN = "mempool_next_block_fee_range_min"
+ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_MAX = "mempool_next_block_fee_range_max"
+ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_COMBINED = "mempool_next_block_fee_range_combined"
 
 PROPERTY_POOL_CONTROL_REMAINING = "remaining_percentage"
 
@@ -99,6 +108,7 @@ API_ENDPOINT_CHAIN_BLOCK_TIME = "{0}{1}/api.dws?q=getblocktime&height={2}"
 API_ENDPOINT_NOMP_POOL_STATS = "https://{0}/api/stats"
 API_ENDPOINT_MEMPOOL_STATS = "{0}mempool"
 API_ENDPOINT_MEMPOOL_FEES = "{0}v1/fees/recommended"
+API_ENDPOINT_MEMPOOL_NEXT_BLOCKS = "{0}v1/fees/mempool-blocks"
 
 DAY_SECONDS = 60 * 60 * 24
 

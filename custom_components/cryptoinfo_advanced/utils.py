@@ -26,7 +26,7 @@ def unit_to_multiplier(unit_of_measurement):
 
 def currency_to_multiplier(currency):
     coin = str(currency).lower() if currency is not None else ""
-    if coin in ["btc", "bitcoin"]:
+    if coin in ["btc", "bitcoin", "bitcoins", "₿"]:
         return 1e8
     else:
         return 1

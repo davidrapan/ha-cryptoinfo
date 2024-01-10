@@ -59,6 +59,15 @@ from .const.const import (
     ATTR_MEMPOOL_FEES_60MIN,
     ATTR_MEMPOOL_FEES_ECO,
     ATTR_MEMPOOL_FEES_MINIMUM,
+    ATTR_MEMPOOL_NEXT_BLOCK_SIZE,
+    ATTR_MEMPOOL_NEXT_BLOCK_SIZE_CALC,
+    ATTR_MEMPOOL_NEXT_BLOCK_TX_COUNT,
+    ATTR_MEMPOOL_NEXT_BLOCK_TOTAL_FEE,
+    ATTR_MEMPOOL_NEXT_BLOCK_TOTAL_FEE_CALC,
+    ATTR_MEMPOOL_NEXT_BLOCK_MEDIAN_FEE,
+    ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_COMBINED,
+    ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_MIN,
+    ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_MAX,
     ATTR_MEMPOOL_TX_COUNT,
     ATTR_MEMPOOL_TOTAL_FEE,
     ATTR_MEMPOOL_TOTAL_FEE_CALC,
@@ -76,6 +85,7 @@ from .const.const import (
     API_ENDPOINT_CHAIN_BLOCK_TIME,
     API_ENDPOINT_NOMP_POOL_STATS,
     API_ENDPOINT_MEMPOOL_FEES,
+    API_ENDPOINT_MEMPOOL_NEXT_BLOCKS,
     API_ENDPOINT_MEMPOOL_STATS,
     CONF_DIFF_MULTIPLIER,
     CONF_BLOCK_TIME_MINUTES,
@@ -199,6 +209,12 @@ class CryptoinfoAdvSensor(SensorEntity):
         self._mempool_fees_60min = None
         self._mempool_fees_eco = None
         self._mempool_fees_minimum = None
+        self._mempool_next_block_size = None
+        self._mempool_next_block_tx_count = None
+        self._mempool_next_block_total_fee = None
+        self._mempool_next_block_median_fee = None
+        self._mempool_next_block_fee_range_min = None
+        self._mempool_next_block_fee_range_max = None
 
     @property
     def is_child_sensor(self):
@@ -372,6 +388,24 @@ class CryptoinfoAdvSensor(SensorEntity):
 
         return round(float(self._mempool_total_fee) / currency_to_multiplier(unit_of_measurement), 4)
 
+    def mempool_next_block_size_calc(self, unit_of_measurement):
+        if self._mempool_next_block_size is None:
+            return None
+
+        return round(float(self._mempool_next_block_size) / unit_to_multiplier(unit_of_measurement), 4)
+
+    def mempool_next_block_total_fee_calc(self, unit_of_measurement):
+        if self._mempool_next_block_total_fee is None:
+            return None
+
+        return round(float(self._mempool_next_block_total_fee) / currency_to_multiplier(unit_of_measurement), 4)
+
+    def mempool_next_block_fee_range_combined(self, unit_of_measurement):
+        if self._mempool_next_block_fee_range_min is None or self._mempool_next_block_fee_range_max is None:
+            return None
+
+        return f"{self._mempool_next_block_fee_range_min:.0f} - {self._mempool_next_block_fee_range_max:.0f}"
+
     @property
     def all_time_high_distance(self):
         if self._all_time_high is None or self.state is None:
@@ -446,6 +480,14 @@ class CryptoinfoAdvSensor(SensorEntity):
             output_attrs[ATTR_MEMPOOL_FEES_ECO] = self._mempool_fees_eco
             output_attrs[ATTR_MEMPOOL_FEES_MINIMUM] = self._mempool_fees_minimum
 
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_NEXT_BLOCK:
+            output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_SIZE] = self._mempool_next_block_size
+            output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_TX_COUNT] = self._mempool_next_block_tx_count
+            output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_TOTAL_FEE] = self._mempool_next_block_total_fee
+            output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_MEDIAN_FEE] = self._mempool_next_block_median_fee
+            output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_MIN] = self._mempool_next_block_fee_range_min
+            output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_MAX] = self._mempool_next_block_fee_range_max
+
         return output_attrs
 
     @property
@@ -513,6 +555,23 @@ class CryptoinfoAdvSensor(SensorEntity):
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_AVERAGE_FEE_PER_TX:
                 output_attrs[ATTR_MEMPOOL_AVERAGE_FEE_PER_TX] = self.mempool_average_fee_per_tx
+
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_NEXT_BLOCK:
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_NEXT_BLOCK_SIZE_CALC:
+                output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_SIZE_CALC] = self.mempool_next_block_size_calc(
+                    child_sensor.unit_of_measurement if child_sensor is not None else None
+                )
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_NEXT_BLOCK_TOTAL_FEE_CALC:
+                output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_TOTAL_FEE_CALC] = self.mempool_next_block_total_fee_calc(
+                    child_sensor.unit_of_measurement if child_sensor is not None else None
+                )
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_COMBINED:
+                output_attrs[ATTR_MEMPOOL_NEXT_BLOCK_FEE_RANGE_COMBINED] = self.mempool_next_block_fee_range_combined(
+                    child_sensor.unit_of_measurement if child_sensor is not None else None
+                )
 
         if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.PRICE_MAIN:
 
@@ -756,6 +815,18 @@ class CryptoinfoAdvSensor(SensorEntity):
 
     def _extract_data_mempool_fees_primary(self, api_data):
         return int(api_data["fastestFee"])
+
+    def _extract_data_mempool_next_block_full(self, json_data):
+        return json_data
+
+    def _extract_data_mempool_next_block_primary(self, api_data):
+        return int(api_data[0]["nTx"])
+
+    def _extract_data_mempool_next_block_special(self, json_data):
+        if isinstance(json_data, list) and len(json_data) >= 2:
+            return list([json_data[0]["feeRange"][0], json_data[0]["feeRange"][-1]])
+
+        return None
 
     async def _fetch_price_data_main(self, api_data=None):
         if not self._fetch_type == CryptoInfoAdvDataFetchType.PRICE_MAIN:
@@ -1023,6 +1094,37 @@ class CryptoinfoAdvSensor(SensorEntity):
 
         return self.data
 
+    async def _fetch_mempool_next_block(self, api_data=None):
+        self.check_valid_config()
+
+        mempool_data, api_data = await self._async_api_fetch(
+            api_data,
+            API_ENDPOINT_MEMPOOL_NEXT_BLOCKS.format(API_BASE_URL_MEMPOOLSPACE),
+            self._extract_data_mempool_next_block_full,
+            self._extract_data_mempool_next_block_primary
+        )
+
+        if mempool_data is not None:
+            fee_ranges = self._extract_data_mempool_next_block_special(api_data)
+
+            if fee_ranges is None:
+                raise ValueError()
+
+            self._update_all_properties(
+                state=int(mempool_data),
+                mempool_next_block_size=int(api_data[0]["blockSize"]),
+                mempool_next_block_tx_count=int(api_data[0]["nTx"]),
+                mempool_next_block_total_fee=int(api_data[0]["totalFees"]),
+                mempool_next_block_median_fee=int(api_data[0]["medianFee"]),
+                mempool_next_block_fee_range_min=int(fee_ranges[0]),
+                mempool_next_block_fee_range_max=int(fee_ranges[1]),
+            )
+
+        else:
+            raise ValueError()
+
+        return self.data
+
     def _render_fetch_args(self):
         if self._fetch_args is None:
             return None
@@ -1106,6 +1208,12 @@ class CryptoinfoAdvSensor(SensorEntity):
         mempool_fees_60min=None,
         mempool_fees_eco=None,
         mempool_fees_minimum=None,
+        mempool_next_block_size=None,
+        mempool_next_block_tx_count=None,
+        mempool_next_block_total_fee=None,
+        mempool_next_block_median_fee=None,
+        mempool_next_block_fee_range_min=None,
+        mempool_next_block_fee_range_max=None,
         available=True,
     ):
         self._state = state
@@ -1139,6 +1247,12 @@ class CryptoinfoAdvSensor(SensorEntity):
         self._mempool_fees_60min = mempool_fees_60min
         self._mempool_fees_eco = mempool_fees_eco
         self._mempool_fees_minimum = mempool_fees_minimum
+        self._mempool_next_block_size = mempool_next_block_size
+        self._mempool_next_block_tx_count = mempool_next_block_tx_count
+        self._mempool_next_block_total_fee = mempool_next_block_total_fee
+        self._mempool_next_block_median_fee = mempool_next_block_median_fee
+        self._mempool_next_block_fee_range_min = mempool_next_block_fee_range_min
+        self._mempool_next_block_fee_range_max = mempool_next_block_fee_range_max
         self._attr_available = available
 
         self._update_child_sensors()
@@ -1219,6 +1333,9 @@ class CryptoinfoAdvSensor(SensorEntity):
 
             elif self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_FEES:
                 api_data = await self._fetch_mempool_fees(api_data)
+
+            elif self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_NEXT_BLOCK:
+                api_data = await self._fetch_mempool_next_block(api_data)
 
             else:
                 api_data = await self._fetch_price_data_main(api_data)

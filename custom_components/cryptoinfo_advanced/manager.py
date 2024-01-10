@@ -78,6 +78,7 @@ class CryptoInfoAdvDataFetchType:
     NOMP_POOL_STATS = CryptoInfoAdvFetchProp("nomp_pool_stats")
     MEMPOOL_STATS = CryptoInfoAdvFetchProp("mempool_stats")
     MEMPOOL_FEES = CryptoInfoAdvFetchProp("mempool_fees")
+    MEMPOOL_NEXT_BLOCK = CryptoInfoAdvFetchProp("mempool_next_block")
 
 
 class CryptoInfoAdvEntityManager:
@@ -108,6 +109,7 @@ class CryptoInfoAdvEntityManager:
             CryptoInfoAdvDataFetchType.NOMP_POOL_STATS,
             CryptoInfoAdvDataFetchType.MEMPOOL_STATS,
             CryptoInfoAdvDataFetchType.MEMPOOL_FEES,
+            CryptoInfoAdvDataFetchType.MEMPOOL_NEXT_BLOCK,
         ]
 
     @property
@@ -165,6 +167,7 @@ class CryptoInfoAdvEntityManager:
         return [
             CryptoInfoAdvDataFetchType.MEMPOOL_STATS,
             CryptoInfoAdvDataFetchType.MEMPOOL_FEES,
+            CryptoInfoAdvDataFetchType.MEMPOOL_NEXT_BLOCK,
         ]
 
     def get_extra_sensor_fetch_type_from_str(self, parent_sensor, attribute_key):

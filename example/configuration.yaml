@@ -326,6 +326,26 @@ sensor:
         id: "BTC Mempool Fees - Minimum"
         unit_of_measurement: "sats"
 
+  - platform: cryptoinfo_advanced
+    id: "BTC Next Block - Total TX"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "tx"
+    update_frequency: 1
+    api_mode: "mempool_next_block"
+    extra_sensors:
+      - property: mempool_next_block_size_calc
+        id: "BTC Next Block - Size"
+        unit_of_measurement: "MB"
+      - property: mempool_next_block_total_fee_calc
+        id: "BTC Next Block - Total Fees"
+        unit_of_measurement: "₿"
+      - property: mempool_next_block_median_fee
+        id: "BTC Next Block - Median Fee"
+        unit_of_measurement: "sat/vB"
+      - property: mempool_next_block_fee_range_combined
+        id: "BTC Next Block - Fee Range"
+        unit_of_measurement: "sat/vB"
+
 
 
   # ROGER NOMP Pool stats - API: NOMP (Any NOMP based pool)
