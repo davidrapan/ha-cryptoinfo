@@ -54,6 +54,11 @@ from .const.const import (
     ATTR_BLOCKS_CONFIRMED,
     ATTR_BLOCKS_ORPHANED,
     ATTR_BLOCK_TIME_IN_SECONDS,
+    ATTR_MEMPOOL_FEES_FASTEST,
+    ATTR_MEMPOOL_FEES_30MIN,
+    ATTR_MEMPOOL_FEES_60MIN,
+    ATTR_MEMPOOL_FEES_ECO,
+    ATTR_MEMPOOL_FEES_MINIMUM,
     ATTR_MEMPOOL_TX_COUNT,
     ATTR_MEMPOOL_TOTAL_FEE,
     ATTR_MEMPOOL_TOTAL_FEE_CALC,
@@ -70,6 +75,7 @@ from .const.const import (
     API_ENDPOINT_CHAIN_ORPHANS,
     API_ENDPOINT_CHAIN_BLOCK_TIME,
     API_ENDPOINT_NOMP_POOL_STATS,
+    API_ENDPOINT_MEMPOOL_FEES,
     API_ENDPOINT_MEMPOOL_STATS,
     CONF_DIFF_MULTIPLIER,
     CONF_BLOCK_TIME_MINUTES,
@@ -188,6 +194,11 @@ class CryptoinfoAdvSensor(SensorEntity):
         self._blocks_orphaned = None
         self._mempool_tx_count = None
         self._mempool_total_fee = None
+        self._mempool_fees_fastest = None
+        self._mempool_fees_30min = None
+        self._mempool_fees_60min = None
+        self._mempool_fees_eco = None
+        self._mempool_fees_minimum = None
 
     @property
     def is_child_sensor(self):
@@ -428,6 +439,13 @@ class CryptoinfoAdvSensor(SensorEntity):
             output_attrs[ATTR_MEMPOOL_TX_COUNT] = self._mempool_tx_count
             output_attrs[ATTR_MEMPOOL_TOTAL_FEE] = self._mempool_total_fee
 
+        if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_FEES:
+            output_attrs[ATTR_MEMPOOL_FEES_FASTEST] = self._mempool_fees_fastest
+            output_attrs[ATTR_MEMPOOL_FEES_30MIN] = self._mempool_fees_30min
+            output_attrs[ATTR_MEMPOOL_FEES_60MIN] = self._mempool_fees_60min
+            output_attrs[ATTR_MEMPOOL_FEES_ECO] = self._mempool_fees_eco
+            output_attrs[ATTR_MEMPOOL_FEES_MINIMUM] = self._mempool_fees_minimum
+
         return output_attrs
 
     @property
@@ -595,7 +613,7 @@ class CryptoinfoAdvSensor(SensorEntity):
 
                 return False
 
-        if self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_STATS:
+        if self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_mempool_types:
 
             if self.cryptocurrency_name.lower() not in ['btc', 'bitcoin']:
                 _LOGGER.error(f"Sensor {self.name} is not BTC, mempool is only supported for BTC.")
@@ -732,6 +750,12 @@ class CryptoinfoAdvSensor(SensorEntity):
 
     def _extract_data_mempool_stats_primary(self, api_data):
         return int(api_data["vsize"])
+
+    def _extract_data_mempool_fees_full(self, json_data):
+        return json_data
+
+    def _extract_data_mempool_fees_primary(self, api_data):
+        return int(api_data["fastestFee"])
 
     async def _fetch_price_data_main(self, api_data=None):
         if not self._fetch_type == CryptoInfoAdvDataFetchType.PRICE_MAIN:
@@ -974,6 +998,31 @@ class CryptoinfoAdvSensor(SensorEntity):
 
         return self.data
 
+    async def _fetch_mempool_fees(self, api_data=None):
+        self.check_valid_config()
+
+        mempool_data, api_data = await self._async_api_fetch(
+            api_data,
+            API_ENDPOINT_MEMPOOL_FEES.format(API_BASE_URL_MEMPOOLSPACE),
+            self._extract_data_mempool_fees_full,
+            self._extract_data_mempool_fees_primary
+        )
+
+        if mempool_data is not None:
+            self._update_all_properties(
+                state=int(mempool_data),
+                mempool_fees_fastest=int(api_data["fastestFee"]),
+                mempool_fees_30min=int(api_data["halfHourFee"]),
+                mempool_fees_60min=int(api_data["hourFee"]),
+                mempool_fees_eco=int(api_data["economyFee"]),
+                mempool_fees_minimum=int(api_data["minimumFee"]),
+            )
+
+        else:
+            raise ValueError()
+
+        return self.data
+
     def _render_fetch_args(self):
         if self._fetch_args is None:
             return None
@@ -1052,6 +1101,11 @@ class CryptoinfoAdvSensor(SensorEntity):
         blocks_orphaned=None,
         mempool_tx_count=None,
         mempool_total_fee=None,
+        mempool_fees_fastest=None,
+        mempool_fees_30min=None,
+        mempool_fees_60min=None,
+        mempool_fees_eco=None,
+        mempool_fees_minimum=None,
         available=True,
     ):
         self._state = state
@@ -1080,6 +1134,11 @@ class CryptoinfoAdvSensor(SensorEntity):
         self._blocks_orphaned = blocks_orphaned
         self._mempool_tx_count = mempool_tx_count
         self._mempool_total_fee = mempool_total_fee
+        self._mempool_fees_fastest = mempool_fees_fastest
+        self._mempool_fees_30min = mempool_fees_30min
+        self._mempool_fees_60min = mempool_fees_60min
+        self._mempool_fees_eco = mempool_fees_eco
+        self._mempool_fees_minimum = mempool_fees_minimum
         self._attr_available = available
 
         self._update_child_sensors()
@@ -1157,6 +1216,9 @@ class CryptoinfoAdvSensor(SensorEntity):
 
             elif self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_STATS:
                 api_data = await self._fetch_mempool_stats(api_data)
+
+            elif self._fetch_type == CryptoInfoAdvDataFetchType.MEMPOOL_FEES:
+                api_data = await self._fetch_mempool_fees(api_data)
 
             else:
                 api_data = await self._fetch_price_data_main(api_data)

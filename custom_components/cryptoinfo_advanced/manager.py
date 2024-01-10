@@ -77,6 +77,7 @@ class CryptoInfoAdvDataFetchType:
     CHAIN_BLOCK_TIME = CryptoInfoAdvFetchProp("chain_block_time")
     NOMP_POOL_STATS = CryptoInfoAdvFetchProp("nomp_pool_stats")
     MEMPOOL_STATS = CryptoInfoAdvFetchProp("mempool_stats")
+    MEMPOOL_FEES = CryptoInfoAdvFetchProp("mempool_fees")
 
 
 class CryptoInfoAdvEntityManager:
@@ -106,6 +107,7 @@ class CryptoInfoAdvEntityManager:
             CryptoInfoAdvDataFetchType.CHAIN_BLOCK_TIME,
             CryptoInfoAdvDataFetchType.NOMP_POOL_STATS,
             CryptoInfoAdvDataFetchType.MEMPOOL_STATS,
+            CryptoInfoAdvDataFetchType.MEMPOOL_FEES,
         ]
 
     @property
@@ -156,6 +158,13 @@ class CryptoInfoAdvEntityManager:
             CryptoInfoAdvDataFetchType.DOMINANCE,
             CryptoInfoAdvDataFetchType.CHAIN_SUMMARY,
             CryptoInfoAdvDataFetchType.CHAIN_CONTROL,
+        ]
+
+    @property
+    def fetch_mempool_types(self):
+        return [
+            CryptoInfoAdvDataFetchType.MEMPOOL_STATS,
+            CryptoInfoAdvDataFetchType.MEMPOOL_FEES,
         ]
 
     def get_extra_sensor_fetch_type_from_str(self, parent_sensor, attribute_key):

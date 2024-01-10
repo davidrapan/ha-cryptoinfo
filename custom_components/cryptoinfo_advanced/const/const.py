@@ -71,6 +71,11 @@ ATTR_MEMPOOL_TOTAL_FEE = "mempool_total_fee"
 ATTR_MEMPOOL_TOTAL_FEE_CALC = "mempool_total_fee_calc"
 ATTR_MEMPOOL_SIZE_CALC = "mempool_size_calc"
 ATTR_MEMPOOL_AVERAGE_FEE_PER_TX = "mempool_average_fee_per_tx"
+ATTR_MEMPOOL_FEES_FASTEST = "mempool_fees_fastest"
+ATTR_MEMPOOL_FEES_30MIN = "mempool_fees_30min"
+ATTR_MEMPOOL_FEES_60MIN = "mempool_fees_60min"
+ATTR_MEMPOOL_FEES_ECO = "mempool_fees_eco"
+ATTR_MEMPOOL_FEES_MINIMUM = "mempool_fees_minimum"
 
 PROPERTY_POOL_CONTROL_REMAINING = "remaining_percentage"
 
@@ -93,6 +98,7 @@ API_ENDPOINT_CHAIN_CONTROL = "{0}explorer/index.pools.dws?coin={1}"
 API_ENDPOINT_CHAIN_BLOCK_TIME = "{0}{1}/api.dws?q=getblocktime&height={2}"
 API_ENDPOINT_NOMP_POOL_STATS = "https://{0}/api/stats"
 API_ENDPOINT_MEMPOOL_STATS = "{0}mempool"
+API_ENDPOINT_MEMPOOL_FEES = "{0}v1/fees/recommended"
 
 DAY_SECONDS = 60 * 60 * 24
 

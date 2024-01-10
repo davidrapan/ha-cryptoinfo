@@ -306,6 +306,26 @@ sensor:
         id: "BTC Mempool Size MB"
         unit_of_measurement: "MB"
 
+  - platform: cryptoinfo_advanced
+    id: "BTC Mempool Fees - Fastest"
+    cryptocurrency_name: "btc"
+    unit_of_measurement: "sats"
+    update_frequency: 1
+    api_mode: "mempool_fees"
+    extra_sensors:
+      - property: mempool_fees_30min
+        id: "BTC Mempool Fees - 30min"
+        unit_of_measurement: "sats"
+      - property: mempool_fees_60min
+        id: "BTC Mempool Fees - 60min"
+        unit_of_measurement: "sats"
+      - property: mempool_fees_eco
+        id: "BTC Mempool Fees - Economy"
+        unit_of_measurement: "sats"
+      - property: mempool_fees_minimum
+        id: "BTC Mempool Fees - Minimum"
+        unit_of_measurement: "sats"
+
 
 
   # ROGER NOMP Pool stats - API: NOMP (Any NOMP based pool)
