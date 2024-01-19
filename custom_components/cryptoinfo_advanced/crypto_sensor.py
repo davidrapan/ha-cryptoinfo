@@ -10,7 +10,8 @@ import async_timeout
 import json
 import time
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from dateutil import parser as dtparser
 
 from .const.const import (
     _LOGGER,
@@ -27,8 +28,12 @@ from .const.const import (
     ATTR_CIRCULATING_SUPPLY,
     ATTR_TOTAL_SUPPLY,
     ATTR_ALL_TIME_HIGH,
+    ATTR_ALL_TIME_HIGH_DATE,
+    ATTR_ALL_TIME_HIGH_DAYS,
     ATTR_ALL_TIME_HIGH_DISTANCE,
     ATTR_ALL_TIME_LOW,
+    ATTR_ALL_TIME_LOW_DATE,
+    ATTR_ALL_TIME_LOW_DAYS,
     ATTR_24H_LOW,
     ATTR_24H_HIGH,
     ATTR_IMAGE_URL,
@@ -193,6 +198,8 @@ class CryptoinfoAdvSensor(SensorEntity):
         self._24h_low = None
         self._24h_high = None
         self._image_url = None
+        self._ath_date = None
+        self._atl_date = None
         self._difficulty = None
         self._hashrate = None
         self._pool_control_1000b = None
@@ -414,6 +421,24 @@ class CryptoinfoAdvSensor(SensorEntity):
         return round(float(self._all_time_high) - self.state, 2)
 
     @property
+    def all_time_high_days(self):
+        if self._ath_date is None:
+            return None
+
+        date_diff = datetime.now(timezone.utc) - self._ath_date
+
+        return date_diff.days
+
+    @property
+    def all_time_low_days(self):
+        if self._atl_date is None:
+            return None
+
+        date_diff = datetime.now(timezone.utc) - self._atl_date
+
+        return date_diff.days
+
+    @property
     def pool_control_1000b_perc(self):
         if self._pool_control_1000b is None:
             return None
@@ -441,6 +466,8 @@ class CryptoinfoAdvSensor(SensorEntity):
             output_attrs[ATTR_24H_LOW] = self._24h_low
             output_attrs[ATTR_24H_HIGH] = self._24h_high
             output_attrs[ATTR_IMAGE_URL] = self._image_url
+            output_attrs[ATTR_ALL_TIME_HIGH_DATE] = self._ath_date
+            output_attrs[ATTR_ALL_TIME_LOW_DATE] = self._atl_date
 
         if full_attr_force or self._fetch_type in CryptoInfoAdvEntityManager.instance().fetch_supply_types:
             output_attrs[ATTR_CIRCULATING_SUPPLY] = self._circulating_supply
@@ -577,6 +604,12 @@ class CryptoinfoAdvSensor(SensorEntity):
 
             if child_sensor is None or child_sensor.attribute_key == ATTR_ALL_TIME_HIGH_DISTANCE:
                 output_attrs[ATTR_ALL_TIME_HIGH_DISTANCE] = self.all_time_high_distance
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_ALL_TIME_HIGH_DAYS:
+                output_attrs[ATTR_ALL_TIME_HIGH_DAYS] = self.all_time_high_days
+
+            if child_sensor is None or child_sensor.attribute_key == ATTR_ALL_TIME_LOW_DAYS:
+                output_attrs[ATTR_ALL_TIME_LOW_DAYS] = self.all_time_low_days
 
         if full_attr_force or self._fetch_type == CryptoInfoAdvDataFetchType.CHAIN_CONTROL:
 
@@ -855,6 +888,8 @@ class CryptoinfoAdvSensor(SensorEntity):
                 low_24h=api_data["low_24h"],
                 high_24h=api_data["high_24h"],
                 image_url=api_data["image"],
+                ath_date=api_data.get("ath_date"),
+                atl_date=api_data.get("atl_date"),
             )
 
         else:
@@ -1192,6 +1227,8 @@ class CryptoinfoAdvSensor(SensorEntity):
         low_24h=None,
         high_24h=None,
         image_url=None,
+        ath_date=None,
+        atl_date=None,
         difficulty=None,
         hashrate=None,
         pool_control_1000b=None,
@@ -1231,6 +1268,7 @@ class CryptoinfoAdvSensor(SensorEntity):
         self._all_time_low = all_time_low
         self._24h_low = low_24h
         self._24h_high = high_24h
+        self._image_url = image_url
         self._difficulty = difficulty
         self._hashrate = hashrate
         self._pool_control_1000b = pool_control_1000b
@@ -1254,6 +1292,16 @@ class CryptoinfoAdvSensor(SensorEntity):
         self._mempool_next_block_fee_range_min = mempool_next_block_fee_range_min
         self._mempool_next_block_fee_range_max = mempool_next_block_fee_range_max
         self._attr_available = available
+        if ath_date and len(ath_date) > 0:
+            try:
+                self._ath_date = dtparser.parse(ath_date)
+            except Exception:
+                self._ath_date = None
+        if atl_date and len(atl_date) > 0:
+            try:
+                self._atl_date = dtparser.parse(atl_date)
+            except Exception:
+                self._atl_date = None
 
         self._update_child_sensors()
 

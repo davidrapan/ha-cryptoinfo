@@ -39,6 +39,8 @@ sensor:
         unit_of_measurement: "$"
       - property: "all_time_high_distance"
         unit_of_measurement: "$"
+      - property: "all_time_high_days"
+        unit_of_measurement: "days"
 
 
   # BTC Price GBP - API: CoinGecko
