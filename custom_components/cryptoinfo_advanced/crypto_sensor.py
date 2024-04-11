@@ -100,6 +100,7 @@ from .const.const import (
     DEFAULT_CHAIN_DIFF_MULTIPLIER,
     DEFAULT_CHAIN_BLOCK_TIME_MINS,
     DEFAULT_CHAIN_HALVING_WINDOW,
+    DEFAULT_MAX_FETCH_FAILURES,
     DAY_SECONDS,
     PROPERTY_POOL_CONTROL_REMAINING,
 )
@@ -146,6 +147,7 @@ class CryptoinfoAdvSensor(SensorEntity):
         block_time_minutes="",
         difficulty_window="",
         halving_window="",
+        max_fetch_failures=None,
         is_child_sensor=False,
     ):
         # Internal Properties
@@ -161,6 +163,7 @@ class CryptoinfoAdvSensor(SensorEntity):
             ".", "", 1).isdigit() else DEFAULT_CHAIN_BLOCK_TIME_MINS
         self._difficulty_window = int(difficulty_window) if difficulty_window.isdigit() else DEFAULT_CHAIN_DIFFICULTY_WINDOW
         self._halving_window = int(halving_window) if halving_window.isdigit() else DEFAULT_CHAIN_HALVING_WINDOW
+        self._max_fetch_failures = int(max_fetch_failures) if max_fetch_failures is not None else DEFAULT_MAX_FETCH_FAILURES
         self._internal_id_name = id_name if id_name is not None else ""
         self._fetch_type = CryptoInfoAdvEntityManager.instance().get_fetch_type_from_str(api_mode)
         self._fetch_args = fetch_args if fetch_args and len(fetch_args) else None
@@ -170,6 +173,7 @@ class CryptoinfoAdvSensor(SensorEntity):
         self._is_child_sensor = is_child_sensor
         self._child_sensors = list()
         self._child_sensor_config = extra_sensors
+        self._fetch_failure_count = 0
 
         # HASS Attributes
         self.async_update = Throttle(update_frequency)(self._async_update)
@@ -1253,6 +1257,8 @@ class CryptoinfoAdvSensor(SensorEntity):
         mempool_next_block_fee_range_max=None,
         available=True,
     ):
+        if available:
+            self._fetch_failure_count = 0
         self._state = state
         self._last_update = datetime.today().strftime("%d-%m-%Y %H:%M")
         self._base_price = base_price
@@ -1351,6 +1357,12 @@ class CryptoinfoAdvSensor(SensorEntity):
 
         return child_sensors
 
+    def _process_failed_fetch(self):
+        self._fetch_failure_count = self._fetch_failure_count + 1
+
+        if self._fetch_failure_count >= self._max_fetch_failures:
+            self._update_all_properties(available=False)
+
     async def _async_update(self):
         api_data = None
 
@@ -1392,7 +1404,7 @@ class CryptoinfoAdvSensor(SensorEntity):
             try:
                 api_data = await self._fetch_price_data_alternate(api_data)
             except ValueError:
-                self._update_all_properties(available=False)
+                self._process_failed_fetch()
                 return
 
         CryptoInfoAdvEntityManager.instance().set_cached_entity_data(self, api_data)
@@ -1426,6 +1438,7 @@ class CryptoinfoAdvChildSensor(CryptoinfoAdvSensor):
             extra_sensors="",
             api_domain_name="",
             pool_name=parent_sensor._pool_name,
+            max_fetch_failures=parent_sensor._max_fetch_failures,
             is_child_sensor=True,
         )
 
@@ -1446,4 +1459,4 @@ class CryptoinfoAdvChildSensor(CryptoinfoAdvSensor):
             self._update_all_properties(state=new_state)
 
         elif new_state is None:
-            self._update_all_properties(available=False)
+            self._process_failed_fetch()

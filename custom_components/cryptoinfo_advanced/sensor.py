@@ -9,6 +9,7 @@ from datetime import timedelta
 
 from .const.const import (
     _LOGGER,
+    DEFAULT_MAX_FETCH_FAILURES,
     DOMAIN,
     PLATFORMS,
     CONF_CRYPTOCURRENCY_NAME,
@@ -26,6 +27,7 @@ from .const.const import (
     CONF_BLOCK_TIME_MINUTES,
     CONF_DIFFICULTY_WINDOW,
     CONF_HALVING_WINDOW,
+    CONF_MAX_FETCH_FAILURES,
 )
 
 from .manager import CryptoInfoAdvEntityManager, CryptoInfoAdvDataFetchType
@@ -69,6 +71,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     block_time_minutes = config.get(CONF_BLOCK_TIME_MINUTES)
     difficulty_window = config.get(CONF_DIFFICULTY_WINDOW)
     halving_window = config.get(CONF_HALVING_WINDOW)
+    max_fetch_failures = config.get(CONF_MAX_FETCH_FAILURES)
 
     entities = []
 
@@ -93,6 +96,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             block_time_minutes,
             difficulty_window,
             halving_window,
+            max_fetch_failures,
         )
         if new_sensor.check_valid_config(False):
             entities.append(new_sensor)
@@ -123,6 +127,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             cv.ensure_list,
             [cv.string],
         ),
+        vol.Optional(CONF_MAX_FETCH_FAILURES, default=DEFAULT_MAX_FETCH_FAILURES): cv.positive_int,
         vol.Optional(CONF_FETCH_ARGS, default=""): cv.string,
         vol.Optional(CONF_EXTRA_SENSORS): vol.All(
             cv.ensure_list,

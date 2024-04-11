@@ -34,6 +34,7 @@ sensor:
     currency_name: "usd"
     unit_of_measurement: "$"
     update_frequency: 1
+    max_fetch_failures: 3
     extra_sensors:
       - property: "all_time_high"
         unit_of_measurement: "$"
