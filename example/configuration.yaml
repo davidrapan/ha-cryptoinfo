@@ -307,6 +307,9 @@ sensor:
       - property: mempool_size_calc
         id: "BTC Mempool Size MB"
         unit_of_measurement: "MB"
+      - property: mempool_average_fee_per_tx
+        id: "BTC Mempool Average Fee Per TX"
+        unit_of_measurement: "satoshis"
 
   - platform: cryptoinfo_advanced
     id: "BTC Mempool Fees - Fastest"
