@@ -754,13 +754,19 @@ class CryptoinfoAdvSensor(SensorEntity):
         return primary_data, api_data
 
     def _extract_data_price_main_primary(self, api_data):
-        return api_data["current_price"] * float(self.multiplier)
+        if api_data is not None:
+            return api_data["current_price"] * float(self.multiplier)
+        else:
+            raise ValueError()
 
     def _extract_data_price_main_full(self, json_data):
         return json_data[0]
 
     def _extract_data_price_simple_primary(self, api_data):
-        return api_data[self.currency_name] * float(self.multiplier)
+        if api_data is not None:
+            return api_data[self.currency_name] * float(self.multiplier)
+        else:
+            raise ValueError()
 
     def _extract_data_price_simple_full(self, json_data):
         return json_data[self.cryptocurrency_name]
@@ -869,14 +875,11 @@ class CryptoinfoAdvSensor(SensorEntity):
         if not self._fetch_type == CryptoInfoAdvDataFetchType.PRICE_MAIN:
             raise ValueError()
 
-        if api_data is not None:
-            price_data, api_data = await self._async_api_fetch(
-                api_data,
-                API_ENDPOINT_PRICE_MAIN.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
-                self._extract_data_price_main_full, self._extract_data_price_main_primary
-            )
-        else:
-            raise ValueError()
+        price_data, api_data = await self._async_api_fetch(
+            api_data,
+            API_ENDPOINT_PRICE_MAIN.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
+            self._extract_data_price_main_full, self._extract_data_price_main_primary
+        )
 
         if price_data is not None:
             self._update_all_properties(
@@ -907,14 +910,11 @@ class CryptoinfoAdvSensor(SensorEntity):
         if self._fetch_type not in CryptoInfoAdvEntityManager.instance().fetch_price_types:
             raise ValueError()
 
-        if api_data is not None:
-            price_data, api_data = await self._async_api_fetch(
-                api_data,
-                API_ENDPOINT_PRICE_ALT.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
-                self._extract_data_price_simple_full, self._extract_data_price_simple_primary
-            )
-        else:
-            raise ValueError()
+        price_data, api_data = await self._async_api_fetch(
+            api_data,
+            API_ENDPOINT_PRICE_ALT.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
+            self._extract_data_price_simple_full, self._extract_data_price_simple_primary
+        )
 
         if price_data is not None:
             self._update_all_properties(
