@@ -869,11 +869,14 @@ class CryptoinfoAdvSensor(SensorEntity):
         if not self._fetch_type == CryptoInfoAdvDataFetchType.PRICE_MAIN:
             raise ValueError()
 
-        price_data, api_data = await self._async_api_fetch(
-            api_data,
-            API_ENDPOINT_PRICE_MAIN.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
-            self._extract_data_price_main_full, self._extract_data_price_main_primary
-        )
+        if api_data is not None:
+            price_data, api_data = await self._async_api_fetch(
+                api_data,
+                API_ENDPOINT_PRICE_MAIN.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
+                self._extract_data_price_main_full, self._extract_data_price_main_primary
+            )
+        else:
+            raise ValueError()
 
         if price_data is not None:
             self._update_all_properties(
@@ -895,7 +898,6 @@ class CryptoinfoAdvSensor(SensorEntity):
                 ath_date=api_data.get("ath_date"),
                 atl_date=api_data.get("atl_date"),
             )
-
         else:
             raise ValueError()
 
@@ -905,11 +907,14 @@ class CryptoinfoAdvSensor(SensorEntity):
         if self._fetch_type not in CryptoInfoAdvEntityManager.instance().fetch_price_types:
             raise ValueError()
 
-        price_data, api_data = await self._async_api_fetch(
-            api_data,
-            API_ENDPOINT_PRICE_ALT.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
-            self._extract_data_price_simple_full, self._extract_data_price_simple_primary
-        )
+        if api_data is not None:
+            price_data, api_data = await self._async_api_fetch(
+                api_data,
+                API_ENDPOINT_PRICE_ALT.format(API_BASE_URL_COINGECKO, self.cryptocurrency_name, self.currency_name),
+                self._extract_data_price_simple_full, self._extract_data_price_simple_primary
+            )
+        else:
+            raise ValueError()
 
         if price_data is not None:
             self._update_all_properties(
@@ -919,7 +924,6 @@ class CryptoinfoAdvSensor(SensorEntity):
                 change_24h=api_data[self.currency_name + "_24h_change"],
                 market_cap=api_data[self.currency_name + "_market_cap"]
             )
-
         else:
             raise ValueError()
 
